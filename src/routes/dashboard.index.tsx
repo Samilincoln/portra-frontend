@@ -109,8 +109,7 @@ function QuickAction({
       ? "border-accent/30 bg-accent/5 text-accent hover:bg-accent/10"
       : "border-border bg-background hover:border-accent/40 hover:bg-accent/5";
   return (
-    // @ts-expect-error TanStack union across dynamic + static routes
-    <Link to={to} params={params} className={`${base} ${styles}`}>
+    <Link to={to} params={params as never} className={`${base} ${styles}`}>
       <span className="flex items-center gap-2">
         <Icon className="h-4 w-4" />
         {label}
