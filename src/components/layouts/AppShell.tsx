@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   LayoutDashboard,
@@ -10,26 +10,60 @@ import {
   Search,
   Bell,
   Sparkles,
+  LogOut,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/lib/auth";
 
 const nav: Array<{
-  to: "/dashboard" | "/dashboard/projects" | "/dashboard/experience" | "/dashboard/testimonials" | "/dashboard/blog" | "/dashboard/settings";
+  to:
+    | "/dashboard"
+    | "/dashboard/projects"
+    | "/dashboard/experience"
+    | "/dashboard/testimonials"
+    | "/dashboard/blog"
+    | "/dashboard/settings";
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
 }> = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/dashboard/projects", label: "Projects", icon: FolderKanban },
+  { to: "/dashboard/blog", label: "Blog", icon: FileText },
   { to: "/dashboard/experience", label: "Experience", icon: Briefcase },
   { to: "/dashboard/testimonials", label: "Testimonials", icon: MessageSquareQuote },
-  { to: "/dashboard/blog", label: "Blog", icon: FileText },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
+function initials(name?: string, email?: string) {
+  const src = (name ?? email ?? "U").trim();
+  const parts = src.split(/\s+/);
+  const chars = parts.length >= 2 ? parts[0][0] + parts[1][0] : src.slice(0, 2);
+  return chars.toUpperCase();
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate({ to: "/login", replace: true });
+  }
+
+  const displayName = user?.name ?? user?.email ?? "Your account";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -82,7 +116,34 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Button variant="ghost" size="icon" aria-label="Notifications">
             <Bell className="h-4 w-4" />
           </Button>
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-accent" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium hover:bg-secondary">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
+                    {initials(user?.name, user?.email)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="hidden max-w-[140px] truncate md:inline">{displayName}</span>
+                <ChevronDown className="hidden h-4 w-4 text-muted-foreground md:inline" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="truncate">{displayName}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/settings" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                <LogOut className="h-4 w-4" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
         <main className="p-4 md:p-8">{children}</main>
       </div>
