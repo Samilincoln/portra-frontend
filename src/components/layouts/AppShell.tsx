@@ -14,14 +14,19 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const nav = [
+const nav: Array<{
+  to: "/dashboard" | "/dashboard/projects" | "/dashboard/experience" | "/dashboard/testimonials" | "/dashboard/blog" | "/dashboard/settings";
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+}> = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/dashboard/projects", label: "Projects", icon: FolderKanban },
   { to: "/dashboard/experience", label: "Experience", icon: Briefcase },
   { to: "/dashboard/testimonials", label: "Testimonials", icon: MessageSquareQuote },
   { to: "/dashboard/blog", label: "Blog", icon: FileText },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },
-] as const;
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
