@@ -42,6 +42,19 @@ function LoginPage() {
     setErrors({});
     setLoading(true);
     try {
+      // Demo credentials shortcut — lets you preview the app without a backend.
+      if (
+        parsed.data.email === "demo@portra.app" &&
+        parsed.data.password === "demo12345"
+      ) {
+        setSession({
+          token: "demo-token",
+          user: { id: "demo", name: "Demo User", email: parsed.data.email },
+        });
+        await router.invalidate();
+        navigate({ to: "/dashboard" });
+        return;
+      }
       const data = await authFetch<{ token: string; user?: AuthUser }>(
         "/api/v1/auth/login",
         parsed.data,
