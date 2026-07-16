@@ -216,9 +216,15 @@ function ProjectsTable({ projects }: { projects: Project[] }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuItem>
-                    <Pencil className="h-4 w-4" />
-                    Edit
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/dashboard/projects/$id"
+                      params={{ id: p.id }}
+                      className="flex items-center gap-2"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Edit
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link
