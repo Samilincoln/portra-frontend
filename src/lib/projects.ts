@@ -82,6 +82,51 @@ export async function createProject(
   return handle<Project>(res);
 }
 
+export async function getProject(
+  token: string | null,
+  id: string,
+): Promise<Project> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
+    headers: authHeaders(token),
+  });
+  return handle<Project>(res);
+}
+
+export async function updateProject(
+  token: string | null,
+  id: string,
+  input: Partial<CreateProjectInput> & { published?: boolean },
+): Promise<Project> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify(input),
+  });
+  return handle<Project>(res);
+}
+
+export async function deleteProject(
+  token: string | null,
+  id: string,
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!res.ok && res.status !== 204) await handle(res);
+}
+
+export async function generateProjectSummary(
+  token: string | null,
+  id: string,
+): Promise<{ shortDescription?: string; architecture?: string; solution?: string; problem?: string; results?: string }> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/projects/${id}/generate-summary`,
+    { method: "POST", headers: authHeaders(token) },
+  );
+  return handle(res);
+}
+
 export function slugify(input: string): string {
   return input
     .toLowerCase()
