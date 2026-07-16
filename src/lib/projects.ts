@@ -11,6 +11,16 @@ export type Project = {
   featured?: boolean;
   thumbnailUrl?: string | null;
   shortDescription?: string | null;
+  problem?: string | null;
+  solution?: string | null;
+  architecture?: string | null;
+  results?: string | null;
+  technologies?: string[];
+  tags?: string[];
+  githubUrl?: string | null;
+  liveDemoUrl?: string | null;
+  screenshots?: string[];
+  published?: boolean;
 };
 
 export type CreateProjectInput = {
