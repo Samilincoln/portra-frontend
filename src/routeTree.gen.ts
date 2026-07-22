@@ -22,6 +22,9 @@ import { Route as DashboardProjectsRouteImport } from './routes/dashboard.projec
 import { Route as DashboardExperienceRouteImport } from './routes/dashboard.experience'
 import { Route as DashboardBlogRouteImport } from './routes/dashboard.blog'
 import { Route as DashboardProjectsIdRouteImport } from './routes/dashboard.projects.$id'
+import { Route as DashboardBlogNewRouteImport } from './routes/dashboard.blog.new'
+import { Route as PUsernameProjectsSlugRouteImport } from './routes/p.$username.projects.$slug'
+import { Route as DashboardBlogIdEditRouteImport } from './routes/dashboard.blog.$id.edit'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -88,6 +91,21 @@ const DashboardProjectsIdRoute = DashboardProjectsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => DashboardProjectsRoute,
 } as any)
+const DashboardBlogNewRoute = DashboardBlogNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => DashboardBlogRoute,
+} as any)
+const PUsernameProjectsSlugRoute = PUsernameProjectsSlugRouteImport.update({
+  id: '/projects/$slug',
+  path: '/projects/$slug',
+  getParentRoute: () => PUsernameRoute,
+} as any)
+const DashboardBlogIdEditRoute = DashboardBlogIdEditRouteImport.update({
+  id: '/$id/edit',
+  path: '/$id/edit',
+  getParentRoute: () => DashboardBlogRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -95,28 +113,34 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/dashboard/blog': typeof DashboardBlogRoute
+  '/dashboard/blog': typeof DashboardBlogRouteWithChildren
   '/dashboard/experience': typeof DashboardExperienceRoute
   '/dashboard/projects': typeof DashboardProjectsRouteWithChildren
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
-  '/p/$username': typeof PUsernameRoute
+  '/p/$username': typeof PUsernameRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
+  '/dashboard/blog/$id/edit': typeof DashboardBlogIdEditRoute
+  '/p/$username/projects/$slug': typeof PUsernameProjectsSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/dashboard/blog': typeof DashboardBlogRoute
+  '/dashboard/blog': typeof DashboardBlogRouteWithChildren
   '/dashboard/experience': typeof DashboardExperienceRoute
   '/dashboard/projects': typeof DashboardProjectsRouteWithChildren
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
-  '/p/$username': typeof PUsernameRoute
+  '/p/$username': typeof PUsernameRouteWithChildren
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
+  '/dashboard/blog/$id/edit': typeof DashboardBlogIdEditRoute
+  '/p/$username/projects/$slug': typeof PUsernameProjectsSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,14 +149,17 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/dashboard/blog': typeof DashboardBlogRoute
+  '/dashboard/blog': typeof DashboardBlogRouteWithChildren
   '/dashboard/experience': typeof DashboardExperienceRoute
   '/dashboard/projects': typeof DashboardProjectsRouteWithChildren
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
-  '/p/$username': typeof PUsernameRoute
+  '/p/$username': typeof PUsernameRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
+  '/dashboard/blog/$id/edit': typeof DashboardBlogIdEditRoute
+  '/p/$username/projects/$slug': typeof PUsernameProjectsSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -149,7 +176,10 @@ export interface FileRouteTypes {
     | '/dashboard/testimonials'
     | '/p/$username'
     | '/dashboard/'
+    | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
+    | '/dashboard/blog/$id/edit'
+    | '/p/$username/projects/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -163,7 +193,10 @@ export interface FileRouteTypes {
     | '/dashboard/testimonials'
     | '/p/$username'
     | '/dashboard'
+    | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
+    | '/dashboard/blog/$id/edit'
+    | '/p/$username/projects/$slug'
   id:
     | '__root__'
     | '/'
@@ -178,7 +211,10 @@ export interface FileRouteTypes {
     | '/dashboard/testimonials'
     | '/p/$username'
     | '/dashboard/'
+    | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
+    | '/dashboard/blog/$id/edit'
+    | '/p/$username/projects/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -187,7 +223,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
-  PUsernameRoute: typeof PUsernameRoute
+  PUsernameRoute: typeof PUsernameRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -283,8 +319,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProjectsIdRouteImport
       parentRoute: typeof DashboardProjectsRoute
     }
+    '/dashboard/blog/new': {
+      id: '/dashboard/blog/new'
+      path: '/new'
+      fullPath: '/dashboard/blog/new'
+      preLoaderRoute: typeof DashboardBlogNewRouteImport
+      parentRoute: typeof DashboardBlogRoute
+    }
+    '/p/$username/projects/$slug': {
+      id: '/p/$username/projects/$slug'
+      path: '/projects/$slug'
+      fullPath: '/p/$username/projects/$slug'
+      preLoaderRoute: typeof PUsernameProjectsSlugRouteImport
+      parentRoute: typeof PUsernameRoute
+    }
+    '/dashboard/blog/$id/edit': {
+      id: '/dashboard/blog/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/dashboard/blog/$id/edit'
+      preLoaderRoute: typeof DashboardBlogIdEditRouteImport
+      parentRoute: typeof DashboardBlogRoute
+    }
   }
 }
+
+interface DashboardBlogRouteChildren {
+  DashboardBlogNewRoute: typeof DashboardBlogNewRoute
+  DashboardBlogIdEditRoute: typeof DashboardBlogIdEditRoute
+}
+
+const DashboardBlogRouteChildren: DashboardBlogRouteChildren = {
+  DashboardBlogNewRoute: DashboardBlogNewRoute,
+  DashboardBlogIdEditRoute: DashboardBlogIdEditRoute,
+}
+
+const DashboardBlogRouteWithChildren = DashboardBlogRoute._addFileChildren(
+  DashboardBlogRouteChildren,
+)
 
 interface DashboardProjectsRouteChildren {
   DashboardProjectsIdRoute: typeof DashboardProjectsIdRoute
@@ -298,7 +369,7 @@ const DashboardProjectsRouteWithChildren =
   DashboardProjectsRoute._addFileChildren(DashboardProjectsRouteChildren)
 
 interface DashboardRouteChildren {
-  DashboardBlogRoute: typeof DashboardBlogRoute
+  DashboardBlogRoute: typeof DashboardBlogRouteWithChildren
   DashboardExperienceRoute: typeof DashboardExperienceRoute
   DashboardProjectsRoute: typeof DashboardProjectsRouteWithChildren
   DashboardSettingsRoute: typeof DashboardSettingsRoute
@@ -307,7 +378,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardBlogRoute: DashboardBlogRoute,
+  DashboardBlogRoute: DashboardBlogRouteWithChildren,
   DashboardExperienceRoute: DashboardExperienceRoute,
   DashboardProjectsRoute: DashboardProjectsRouteWithChildren,
   DashboardSettingsRoute: DashboardSettingsRoute,
@@ -319,13 +390,25 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
 )
 
+interface PUsernameRouteChildren {
+  PUsernameProjectsSlugRoute: typeof PUsernameProjectsSlugRoute
+}
+
+const PUsernameRouteChildren: PUsernameRouteChildren = {
+  PUsernameProjectsSlugRoute: PUsernameProjectsSlugRoute,
+}
+
+const PUsernameRouteWithChildren = PUsernameRoute._addFileChildren(
+  PUsernameRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
-  PUsernameRoute: PUsernameRoute,
+  PUsernameRoute: PUsernameRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
