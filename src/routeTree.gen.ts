@@ -21,9 +21,11 @@ import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settin
 import { Route as DashboardProjectsRouteImport } from './routes/dashboard.projects'
 import { Route as DashboardExperienceRouteImport } from './routes/dashboard.experience'
 import { Route as DashboardBlogRouteImport } from './routes/dashboard.blog'
+import { Route as PUsernameBlogRouteImport } from './routes/p.$username.blog'
 import { Route as DashboardProjectsIdRouteImport } from './routes/dashboard.projects.$id'
 import { Route as DashboardBlogNewRouteImport } from './routes/dashboard.blog.new'
 import { Route as PUsernameProjectsSlugRouteImport } from './routes/p.$username.projects.$slug'
+import { Route as PUsernameBlogSlugRouteImport } from './routes/p.$username.blog.$slug'
 import { Route as DashboardBlogIdEditRouteImport } from './routes/dashboard.blog.$id.edit'
 
 const SignupRoute = SignupRouteImport.update({
@@ -86,6 +88,11 @@ const DashboardBlogRoute = DashboardBlogRouteImport.update({
   path: '/blog',
   getParentRoute: () => DashboardRoute,
 } as any)
+const PUsernameBlogRoute = PUsernameBlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
+  getParentRoute: () => PUsernameRoute,
+} as any)
 const DashboardProjectsIdRoute = DashboardProjectsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -100,6 +107,11 @@ const PUsernameProjectsSlugRoute = PUsernameProjectsSlugRouteImport.update({
   id: '/projects/$slug',
   path: '/projects/$slug',
   getParentRoute: () => PUsernameRoute,
+} as any)
+const PUsernameBlogSlugRoute = PUsernameBlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => PUsernameBlogRoute,
 } as any)
 const DashboardBlogIdEditRoute = DashboardBlogIdEditRouteImport.update({
   id: '/$id/edit',
@@ -122,7 +134,9 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
+  '/p/$username/blog': typeof PUsernameBlogRouteWithChildren
   '/dashboard/blog/$id/edit': typeof DashboardBlogIdEditRoute
+  '/p/$username/blog/$slug': typeof PUsernameBlogSlugRoute
   '/p/$username/projects/$slug': typeof PUsernameProjectsSlugRoute
 }
 export interface FileRoutesByTo {
@@ -139,7 +153,9 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
+  '/p/$username/blog': typeof PUsernameBlogRouteWithChildren
   '/dashboard/blog/$id/edit': typeof DashboardBlogIdEditRoute
+  '/p/$username/blog/$slug': typeof PUsernameBlogSlugRoute
   '/p/$username/projects/$slug': typeof PUsernameProjectsSlugRoute
 }
 export interface FileRoutesById {
@@ -158,7 +174,9 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
+  '/p/$username/blog': typeof PUsernameBlogRouteWithChildren
   '/dashboard/blog/$id/edit': typeof DashboardBlogIdEditRoute
+  '/p/$username/blog/$slug': typeof PUsernameBlogSlugRoute
   '/p/$username/projects/$slug': typeof PUsernameProjectsSlugRoute
 }
 export interface FileRouteTypes {
@@ -178,7 +196,9 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
+    | '/p/$username/blog'
     | '/dashboard/blog/$id/edit'
+    | '/p/$username/blog/$slug'
     | '/p/$username/projects/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -195,7 +215,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
+    | '/p/$username/blog'
     | '/dashboard/blog/$id/edit'
+    | '/p/$username/blog/$slug'
     | '/p/$username/projects/$slug'
   id:
     | '__root__'
@@ -213,7 +235,9 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
+    | '/p/$username/blog'
     | '/dashboard/blog/$id/edit'
+    | '/p/$username/blog/$slug'
     | '/p/$username/projects/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -312,6 +336,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardBlogRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/p/$username/blog': {
+      id: '/p/$username/blog'
+      path: '/blog'
+      fullPath: '/p/$username/blog'
+      preLoaderRoute: typeof PUsernameBlogRouteImport
+      parentRoute: typeof PUsernameRoute
+    }
     '/dashboard/projects/$id': {
       id: '/dashboard/projects/$id'
       path: '/$id'
@@ -332,6 +363,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/p/$username/projects/$slug'
       preLoaderRoute: typeof PUsernameProjectsSlugRouteImport
       parentRoute: typeof PUsernameRoute
+    }
+    '/p/$username/blog/$slug': {
+      id: '/p/$username/blog/$slug'
+      path: '/$slug'
+      fullPath: '/p/$username/blog/$slug'
+      preLoaderRoute: typeof PUsernameBlogSlugRouteImport
+      parentRoute: typeof PUsernameBlogRoute
     }
     '/dashboard/blog/$id/edit': {
       id: '/dashboard/blog/$id/edit'
@@ -390,11 +428,25 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
 )
 
+interface PUsernameBlogRouteChildren {
+  PUsernameBlogSlugRoute: typeof PUsernameBlogSlugRoute
+}
+
+const PUsernameBlogRouteChildren: PUsernameBlogRouteChildren = {
+  PUsernameBlogSlugRoute: PUsernameBlogSlugRoute,
+}
+
+const PUsernameBlogRouteWithChildren = PUsernameBlogRoute._addFileChildren(
+  PUsernameBlogRouteChildren,
+)
+
 interface PUsernameRouteChildren {
+  PUsernameBlogRoute: typeof PUsernameBlogRouteWithChildren
   PUsernameProjectsSlugRoute: typeof PUsernameProjectsSlugRoute
 }
 
 const PUsernameRouteChildren: PUsernameRouteChildren = {
+  PUsernameBlogRoute: PUsernameBlogRouteWithChildren,
   PUsernameProjectsSlugRoute: PUsernameProjectsSlugRoute,
 }
 

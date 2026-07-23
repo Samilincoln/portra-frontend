@@ -60,7 +60,7 @@ function PublicBlogList() {
             Array.from({ length: 3 }).map((_, i) => (
               <Skeleton key={i} className="h-32 w-full rounded-2xl" />
             ))
-          ) : q.isError instanceof PortfolioNotFoundError || q.error instanceof PortfolioNotFoundError ? (
+          ) : q.error instanceof PortfolioNotFoundError ? (
             <div className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
               Portfolio not found.
             </div>
