@@ -37,6 +37,11 @@ async function handle<T>(res: Response): Promise<T> {
     ? await res.json().catch(() => ({}))
     : {};
   if (!res.ok) {
+    if (res.status === 404) {
+      throw new PortfolioNotFoundError(
+        (data as { message?: string }).message ?? "Not found",
+      );
+    }
     throw {
       message:
         (data as { message?: string }).message ??
@@ -71,4 +76,61 @@ export async function getPortfolioProject(
     `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/projects/${encodeURIComponent(slug)}`,
   );
   return handle<Project>(res);
+}
+
+export async function getPortfolioExperiences(
+  username: string,
+): Promise<Experience[]> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/experience`,
+  );
+  const data = await handle<Experience[] | { experiences: Experience[] }>(res);
+  return Array.isArray(data) ? data : (data.experiences ?? []);
+}
+
+export async function getPortfolioTestimonials(
+  username: string,
+): Promise<Testimonial[]> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/testimonials`,
+  );
+  const data = await handle<Testimonial[] | { testimonials: Testimonial[] }>(res);
+  return Array.isArray(data) ? data : (data.testimonials ?? []);
+}
+
+export async function getPortfolioBlog(
+  username: string,
+): Promise<BlogPost[]> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/blog`,
+  );
+  const data = await handle<BlogPost[] | { posts: BlogPost[] }>(res);
+  return Array.isArray(data) ? data : (data.posts ?? []);
+}
+
+export async function getPortfolioBlogPost(
+  username: string,
+  slug: string,
+): Promise<BlogPost> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/blog/${encodeURIComponent(slug)}`,
+  );
+  return handle<BlogPost>(res);
+}
+
+export type ContactInput = { name: string; email: string; message: string };
+
+export async function submitContact(
+  username: string,
+  input: ContactInput,
+): Promise<{ ok: true }> {
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/contact`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+  return handle<{ ok: true }>(res);
 }
