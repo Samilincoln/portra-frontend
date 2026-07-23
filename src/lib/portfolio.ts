@@ -2,6 +2,15 @@ import { API_BASE_URL, type AuthApiError } from "@/lib/auth";
 import type { Project } from "@/lib/projects";
 import type { Skill } from "@/lib/skills";
 import type { Experience } from "@/lib/experiences";
+import type { BlogPost } from "@/lib/blog";
+import type { Testimonial } from "@/lib/testimonials";
+
+export class PortfolioNotFoundError extends Error {
+  constructor(message = "Portfolio not found") {
+    super(message);
+    this.name = "PortfolioNotFoundError";
+  }
+}
 
 export type PortfolioProfile = {
   username: string;
