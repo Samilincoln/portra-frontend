@@ -6,7 +6,7 @@ import { AuthCard, FieldError, FormError } from "@/components/auth/AuthCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { authFetch, useAuth, type AuthUser } from "@/lib/auth";
+import { authFetch, useAuth, type AuthUser, type AuthApiError } from "@/lib/auth";
 
 const schema = z.object({
   email: z.string().trim().email({ message: "Enter a valid email" }).max(255),
@@ -55,11 +55,16 @@ function LoginPage() {
         navigate({ to: "/dashboard" });
         return;
       }
-      const data = await authFetch<{ token: string; user?: AuthUser }>(
+      const data = await authFetch<{ token?: string; access_token?: string; accessToken?: string; user?: AuthUser }>(
         "/api/v1/auth/login",
         parsed.data,
       );
-      setSession({ token: data.token, user: data.user ?? { email: parsed.data.email } });
+      console.log("Login response:", data);
+      const token = data.token ?? data.access_token ?? data.accessToken;
+      if (!token) {
+        throw { message: "Invalid response: token not found in response" } satisfies AuthApiError;
+      }
+      setSession({ token, user: data.user ?? { email: parsed.data.email } });
       await router.invalidate();
       navigate({ to: "/dashboard" });
     } catch (err) {

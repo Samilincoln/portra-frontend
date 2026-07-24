@@ -87,6 +87,8 @@ export async function authFetch<T = unknown>(
     ? await res.json().catch(() => ({}))
     : {};
 
+  console.log("API Response:", { path, status: res.status, data });
+
   if (!res.ok) {
     throw {
       message:

@@ -6,7 +6,7 @@ import { AuthCard, FieldError, FormError } from "@/components/auth/AuthCard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { authFetch, useAuth, type AuthUser } from "@/lib/auth";
+import { authFetch, useAuth, type AuthUser, type AuthApiError } from "@/lib/auth";
 
 const schema = z
   .object({
@@ -51,12 +51,17 @@ function SignupPage() {
     try {
       const { confirm: _c, ...payload } = parsed.data;
       void _c;
-      const data = await authFetch<{ token: string; user?: AuthUser }>(
+      const data = await authFetch<{ token?: string; access_token?: string; accessToken?: string; user?: AuthUser }>(
         "/api/v1/auth/signup",
         payload,
       );
+      console.log("Signup response:", data);
+      const token = data.token ?? data.access_token ?? data.accessToken;
+      if (!token) {
+        throw { message: "Invalid response: token not found in response" } satisfies AuthApiError;
+      }
       setSession({
-        token: data.token,
+        token,
         user: data.user ?? { name: payload.name, email: payload.email },
       });
       await router.invalidate();
