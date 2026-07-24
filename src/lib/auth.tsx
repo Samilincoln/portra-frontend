@@ -15,6 +15,7 @@ export type AuthUser = {
   name?: string;
   email?: string;
   avatarUrl?: string;
+  username?: string;
 };
 
 type AuthState = {

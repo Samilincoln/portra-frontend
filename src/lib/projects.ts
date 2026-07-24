@@ -2,6 +2,14 @@ import { API_BASE_URL, type AuthApiError } from "@/lib/auth";
 
 export type ProjectStatus = "published" | "draft";
 
+export type ProjectTechnology = {
+  id: string;
+  name: string;
+  icon: string;
+  category: string;
+  created_at: string;
+};
+
 export type Project = {
   id: string;
   title: string;
@@ -21,7 +29,30 @@ export type Project = {
   liveDemoUrl?: string | null;
   screenshots?: string[];
   published?: boolean;
+  description?: string | null;
+  github_url?: string | null;
+  demo_url?: string | null;
+  thumbnail?: string | null;
+  technology_ids?: string[];
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  published_at?: string | null;
+  technologies_detail?: ProjectTechnology[];
+  meta_title?: string | null;
+  meta_description?: string | null;
 };
+
+export function normalizeProject(raw: Project): Project {
+  return {
+    ...raw,
+    shortDescription: raw.shortDescription ?? raw.description ?? null,
+    githubUrl: raw.githubUrl ?? raw.github_url ?? null,
+    liveDemoUrl: raw.liveDemoUrl ?? raw.demo_url ?? null,
+    thumbnailUrl: raw.thumbnailUrl ?? raw.thumbnail ?? null,
+    technologies: raw.technologies ?? raw.technologies_detail?.map((t) => t.name) ?? [],
+  };
+}
 
 export type CreateProjectInput = {
   title: string;
@@ -67,7 +98,8 @@ export async function listProjects(token: string | null): Promise<Project[]> {
     headers: authHeaders(token),
   });
   const data = await handle<Project[] | { projects: Project[] }>(res);
-  return Array.isArray(data) ? data : (data.projects ?? []);
+  const projects = Array.isArray(data) ? data : (data.projects ?? []);
+  return projects.map(normalizeProject);
 }
 
 export async function createProject(
@@ -79,7 +111,7 @@ export async function createProject(
     headers: authHeaders(token),
     body: JSON.stringify(input),
   });
-  return handle<Project>(res);
+  return normalizeProject(await handle<Project>(res));
 }
 
 export async function getProject(
@@ -89,7 +121,7 @@ export async function getProject(
   const res = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
     headers: authHeaders(token),
   });
-  return handle<Project>(res);
+  return normalizeProject(await handle<Project>(res));
 }
 
 export async function updateProject(
@@ -102,7 +134,7 @@ export async function updateProject(
     headers: authHeaders(token),
     body: JSON.stringify(input),
   });
-  return handle<Project>(res);
+  return normalizeProject(await handle<Project>(res));
 }
 
 export async function deleteProject(

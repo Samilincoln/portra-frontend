@@ -6,12 +6,16 @@ export type BlogPost = {
   id: string;
   title: string;
   slug: string;
-  content: string;
-  coverImageUrl?: string | null;
+  content?: string;
+  excerpt?: string | null;
+  coverImage?: string | null;
+  cover_image?: string | null;
   tags?: string[];
-  status: BlogStatus;
+  status?: "published" | "draft";
+  published?: boolean;
   publishedAt?: string | null;
   createdAt?: string;
+  updatedAt?: string;
   views?: number;
 };
 
@@ -46,8 +50,16 @@ async function handle<T>(res: Response): Promise<T> {
   return data as T;
 }
 
-export async function listBlogs(token: string | null): Promise<BlogPost[]> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/blogs`, {
+export async function listBlogs(
+  token: string | null,
+  params?: { published_only?: boolean; skip?: number; limit?: number }
+): Promise<BlogPost[]> {
+  const search = new URLSearchParams();
+  if (params?.published_only !== undefined) search.set("published_only", String(params.published_only));
+  if (params?.skip !== undefined) search.set("skip", String(params.skip));
+  if (params?.limit !== undefined) search.set("limit", String(params.limit));
+
+  const res = await fetch(`${API_BASE_URL}/api/v1/blog?${search}`, {
     headers: authHeaders(token),
   });
   const data = await handle<BlogPost[] | { posts: BlogPost[] }>(res);
@@ -58,7 +70,7 @@ export async function getBlog(
   token: string | null,
   id: string,
 ): Promise<BlogPost> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/blogs/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/api/v1/blog/${id}`, {
     headers: authHeaders(token),
   });
   return handle<BlogPost>(res);
@@ -68,7 +80,7 @@ export async function createBlog(
   token: string | null,
   input: BlogInput,
 ): Promise<BlogPost> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/blogs`, {
+  const res = await fetch(`${API_BASE_URL}/api/v1/blog`, {
     method: "POST",
     headers: authHeaders(token),
     body: JSON.stringify(input),
@@ -81,7 +93,7 @@ export async function updateBlog(
   id: string,
   input: Partial<BlogInput>,
 ): Promise<BlogPost> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/blogs/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/api/v1/blog/${id}`, {
     method: "PATCH",
     headers: authHeaders(token),
     body: JSON.stringify(input),
@@ -93,7 +105,7 @@ export async function deleteBlog(
   token: string | null,
   id: string,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/blogs/${id}`, {
+  const res = await fetch(`${API_BASE_URL}/api/v1/blog/${id}`, {
     method: "DELETE",
     headers: authHeaders(token),
   });

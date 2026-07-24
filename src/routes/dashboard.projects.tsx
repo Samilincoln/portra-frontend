@@ -43,7 +43,10 @@ import { cn } from "@/lib/utils";
 
 import { useAuth } from "@/lib/auth";
 import { listProjects, type Project } from "@/lib/projects";
+import { getMe } from "@/lib/users";
 import { AddProjectDialog } from "@/components/dashboard/AddProjectDialog";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard/projects")({
   head: () => ({ meta: [{ title: "Projects — Portra" }] }),
@@ -57,10 +60,31 @@ function ProjectsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [addOpen, setAddOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const userQuery = useQuery({
+    queryKey: ["user-profile"],
+    queryFn: () => getMe(token),
+  });
 
   const query = useQuery({
     queryKey: ["projects"],
     queryFn: () => listProjects(token),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to delete project");
+    },
+    onSuccess: () => {
+      toast.success("Project deleted");
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+    onError: () => toast.error("Could not delete project"),
   });
 
   const filtered = useMemo(() => {
@@ -77,6 +101,8 @@ function ProjectsPage() {
       );
     });
   }, [query.data, search, status]);
+
+  const username = userQuery.data?.username ?? "";
 
   return (
     <div className="space-y-6">
@@ -127,7 +153,7 @@ function ProjectsPage() {
             <NoMatchState />
           )
         ) : (
-          <ProjectsTable projects={filtered} />
+          <ProjectsTable projects={filtered} username={username} onDelete={deleteMutation.mutate} />
         )}
       </div>
 
@@ -136,7 +162,15 @@ function ProjectsPage() {
   );
 }
 
-function ProjectsTable({ projects }: { projects: Project[] }) {
+function ProjectsTable({
+  projects,
+  username,
+  onDelete,
+}: {
+  projects: Project[];
+  username: string;
+  onDelete: (id: string) => void;
+}) {
   return (
     <Table>
       <TableHeader>
@@ -150,34 +184,38 @@ function ProjectsTable({ projects }: { projects: Project[] }) {
       </TableHeader>
       <TableBody>
         {projects.map((p) => (
-          <TableRow key={p.id}>
+          <TableRow
+            key={p.id}
+            onClick={(e) => {
+              if (e.currentTarget === e.target) {
+                window.location.href = `/dashboard/projects/${p.id}`;
+              }
+            }}
+            style={{ cursor: "pointer" }}
+          >
             <TableCell>
-              <div className="flex items-center gap-3">
+              <Link
+                to="/dashboard/projects/$id"
+                params={{ id: p.id }}
+                className="flex items-center gap-3 hover:bg-secondary/50 rounded-md p-1.5 transition-colors"
+              >
                 <div className="flex h-11 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
                   {p.thumbnailUrl ? (
-                    <img
-                      src={p.thumbnailUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
+                    <img src={p.thumbnailUrl} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <ImageIcon className="h-4 w-4 text-muted-foreground" />
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{p.title}</p>
+                  <p className="truncate font-medium hover:text-accent transition-colors">{p.title}</p>
                   {p.shortDescription ? (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {p.shortDescription}
-                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{p.shortDescription}</p>
                   ) : null}
                 </div>
-              </div>
+              </Link>
             </TableCell>
             <TableCell>
-              <span className="text-sm text-muted-foreground">
-                {p.category ?? "—"}
-              </span>
+              <span className="text-sm text-muted-foreground">{p.category ?? "—"}</span>
             </TableCell>
             <TableCell>
               <Badge
@@ -197,25 +235,18 @@ function ProjectsTable({ projects }: { projects: Project[] }) {
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 <Star
-                  className={cn(
-                    "h-4 w-4",
-                    p.featured && "fill-amber-400 text-amber-400",
-                  )}
+                  className={cn("h-4 w-4", p.featured && "fill-amber-400 text-amber-400")}
                 />
               </button>
             </TableCell>
             <TableCell>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Project actions"
-                  >
+                  <Button variant="ghost" size="icon" aria-label="Project actions">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuItem asChild>
                     <Link
                       to="/dashboard/projects/$id"
@@ -226,18 +257,23 @@ function ProjectsTable({ projects }: { projects: Project[] }) {
                       Edit
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/p/$username"
-                      params={{ username: p.slug }}
-                      className="flex items-center gap-2"
-                    >
-                      <Eye className="h-4 w-4" />
-                      Preview
-                    </Link>
-                  </DropdownMenuItem>
+                  {username && (
+                    <DropdownMenuItem asChild>
+                      <Link
+                        to="/p/$username/projects/$slug"
+                        params={{ username, slug: p.slug }}
+                        className="flex items-center gap-2"
+                      >
+                        <Eye className="h-4 w-4" />
+                        Preview
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive focus:text-destructive">
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive cursor-pointer"
+                    onClick={() => onDelete(p.id)}
+                  >
                     <Trash2 className="h-4 w-4" />
                     Delete
                   </DropdownMenuItem>
