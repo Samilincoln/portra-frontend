@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -28,14 +29,42 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+const STORAGE_KEY = "portra_auth";
+
+function loadStoredAuth(): { token: string | null; user: AuthUser | null } {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return { token: parsed.token ?? null, user: parsed.user ?? null };
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return { token: null, user: null };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const { token: storedToken, user: storedUser } = loadStoredAuth();
+    setToken(storedToken);
+    setUser(storedUser);
+    setHydrated(true);
+  }, []);
 
   const setSession = useCallback(
     ({ token: t, user: u }: { token: string; user?: AuthUser | null }) => {
       setToken(t);
       setUser(u ?? null);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: t, user: u ?? null }));
+      } catch {
+        // ignore storage errors
+      }
     },
     [],
   );
@@ -43,6 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore storage errors
+    }
   }, []);
 
   const value = useMemo<AuthState>(
@@ -56,7 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [token, user, setSession, logout],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  // Always provide context (with null values during SSR/hydration) to avoid "useAuth must be used within AuthProvider"
+  const contextValue = hydrated ? value : { ...value, token: null, user: null, isAuthenticated: false };
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
@@ -67,17 +104,25 @@ export function useAuth() {
 
 export type AuthApiError = { message: string; fields?: Record<string, string> };
 
+function getAuthHeaders(token: string | null): HeadersInit {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
 export async function authFetch<T = unknown>(
   path: string,
   body: unknown,
+  options?: { token?: string | null; method?: "POST" | "GET" | "PATCH" | "DELETE" },
 ): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
+  const token = options?.token ?? null;
   let res: Response;
   try {
     res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      method: options?.method ?? "POST",
+      headers: getAuthHeaders(token),
+      body: options?.method === "GET" ? undefined : JSON.stringify(body),
     });
   } catch {
     throw { message: "Network error. Please try again." } satisfies AuthApiError;
@@ -93,8 +138,7 @@ export async function authFetch<T = unknown>(
   if (!res.ok) {
     throw {
       message:
-        (data as { message?: string }).message ??
-        `Request failed (${res.status})`,
+        (data as { message?: string }).message ?? `Request failed (${res.status})`,
       fields: (data as { fields?: Record<string, string> }).fields,
     } satisfies AuthApiError;
   }

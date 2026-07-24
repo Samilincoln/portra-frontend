@@ -6,6 +6,7 @@ export type UserProfile = {
   email?: string;
   bio?: string;
   avatarUrl?: string;
+  avatar?: string | null;
   username?: string;
   customDomain?: string;
   theme?: string;
@@ -15,6 +16,11 @@ export type UserProfile = {
     twitter?: string;
     website?: string;
   };
+  subscriptionTier?: string;
+  isActive?: boolean;
+  isVerified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 function authHeaders(token: string | null): HeadersInit {
@@ -40,7 +46,7 @@ async function handle<T>(res: Response): Promise<T> {
 }
 
 export async function getMe(token: string | null): Promise<UserProfile> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+  const res = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
     headers: authHeaders(token),
   });
   return handle<UserProfile>(res);

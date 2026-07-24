@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Plus,
@@ -57,6 +57,7 @@ type StatusFilter = "all" | "published" | "draft";
 
 function ProjectsPage() {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [addOpen, setAddOpen] = useState(false);
@@ -187,8 +188,12 @@ function ProjectsTable({
           <TableRow
             key={p.id}
             onClick={(e) => {
-              if (e.currentTarget === e.target) {
-                window.location.href = `/dashboard/projects/${p.id}`;
+              // Only navigate if clicking on the row itself, not on interactive elements
+              if (
+                e.currentTarget === e.target ||
+                (e.target instanceof HTMLElement && e.target.closest("td") === e.currentTarget)
+              ) {
+                navigate({ to: "/dashboard/projects/$id", params: { id: p.id } });
               }
             }}
             style={{ cursor: "pointer" }}
