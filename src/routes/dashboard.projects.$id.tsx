@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import React, { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import {
   createFileRoute,
   useNavigate,
@@ -16,6 +16,9 @@ import {
   Github,
   X,
   Loader2,
+  Edit,
+  Eye,
+  Upload,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,6 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 import { useAuth } from "@/lib/auth";
 import {
@@ -77,7 +81,7 @@ const schema = z.object({
 });
 
 export const Route = createFileRoute("/dashboard/projects/$id")({
-  head: () => ({ meta: [{ title: "Edit project — Portra" }] }),
+  head: () => ({ meta: [{ title: "Project — Portra" }] }),
   component: ProjectDetailPage,
 });
 
@@ -97,6 +101,7 @@ type FormState = {
   tags: string[];
   featured: boolean;
   published: boolean;
+  screenshots: { name: string; url: string }[];
 };
 
 function toForm(p: Project): FormState {
@@ -116,6 +121,7 @@ function toForm(p: Project): FormState {
     tags: p.tags ?? [],
     featured: Boolean(p.featured),
     published: p.status === "published" || Boolean(p.published),
+    screenshots: p.screenshots?.map((s, i) => ({ name: `screenshot-${i}`, url: s })) ?? [],
   };
 }
 
@@ -129,6 +135,8 @@ function ProjectDetailPage() {
   const query = useQuery({
     queryKey: ["projects", id],
     queryFn: () => getProject(token, id),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const [form, setForm] = useState<FormState | null>(null);
@@ -136,6 +144,8 @@ function ProjectDetailPage() {
   const [techInput, setTechInput] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
     if (query.data && !form) setForm(toForm(query.data));
@@ -154,6 +164,7 @@ function ProjectDetailPage() {
       toast.success("Project saved");
       qc.setQueryData(["projects", id], data);
       qc.invalidateQueries({ queryKey: ["projects"] });
+      setIsEditing(false);
     },
     onError: (err: { message?: string }) =>
       toast.error(err?.message ?? "Could not save"),
@@ -232,6 +243,15 @@ function ProjectDetailPage() {
     }
   }
 
+  function handleFiles(files: FileList | null) {
+    if (!files) return;
+    const next = Array.from(files)
+      .filter((f) => f.type.startsWith("image/"))
+      .map((f) => ({ name: f.name, url: URL.createObjectURL(f) }));
+    if (!next.length) return;
+    setForm((f) => (f ? { ...f, screenshots: [...f.screenshots, ...next] } : f));
+  }
+
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form) return;
@@ -261,7 +281,10 @@ function ProjectDetailPage() {
       return;
     }
     setErrors({});
-    saveMutation.mutate(payload);
+    saveMutation.mutate({
+      ...parsed.data,
+      screenshots: form.screenshots.map((s) => s.url),
+    } as CreateProjectInput);
   }
 
   if (query.isLoading || !form) {
@@ -306,217 +329,465 @@ function ProjectDetailPage() {
             {form.title || "Untitled project"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Refine details and publish when it's ready to show.
+            {isEditing ? "Edit your project details." : "View project details. Click Edit to make changes."}
           </p>
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2 shadow-soft">
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              {form.published ? "Published" : "Draft"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {form.published ? "Visible on portfolio" : "Only visible to you"}
-            </p>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2 shadow-soft">
+            <div className="text-right">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                {form.published ? "Published" : "Draft"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {form.published ? "Visible on portfolio" : "Only visible to you"}
+              </p>
+            </div>
+            <Switch
+              checked={form.published}
+              onCheckedChange={handleTogglePublish}
+              disabled={publishMutation.isPending}
+            />
           </div>
-          <Switch
-            checked={form.published}
-            onCheckedChange={handleTogglePublish}
-            disabled={publishMutation.isPending}
-          />
+          {!isEditing ? (
+            <Button
+              variant="default"
+              onClick={() => setIsEditing(true)}
+              className="gap-1.5"
+            >
+              <Edit className="h-4 w-4" />
+              Edit
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => setIsEditing(false)}
+              className="gap-1.5"
+            >
+              <X className="h-4 w-4" />
+              Cancel
+            </Button>
+          )}
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
-        <form
-          onSubmit={onSubmit}
-          className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-soft"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold">Project details</h2>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => summaryMutation.mutate()}
-              disabled={summaryMutation.isPending}
-              className="gap-1.5"
+        {isEditing ? (
+          <>
+            <form
+              onSubmit={onSubmit}
+              className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-soft"
             >
-              {summaryMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              Generate AI summary
-            </Button>
-          </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">Project details</h2>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => summaryMutation.mutate()}
+                  disabled={summaryMutation.isPending}
+                  className="gap-1.5"
+                >
+                  {summaryMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  Generate AI summary
+                </Button>
+              </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Title" error={errors.title}>
-              <Input
-                value={form.title}
-                onChange={(e) =>
-                  setForm((f) =>
-                    f
-                      ? {
-                          ...f,
-                          title: e.target.value,
-                          slug: f.slugTouched ? f.slug : slugify(e.target.value),
-                        }
-                      : f,
-                  )
-                }
-              />
-            </Field>
-            <Field label="Slug" error={errors.slug}>
-              <Input
-                value={form.slug}
-                onChange={(e) =>
-                  setForm((f) =>
-                    f ? { ...f, slug: e.target.value, slugTouched: true } : f,
-                  )
-                }
-                placeholder={autoSlug}
-              />
-            </Field>
-          </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Title" error={errors.title}>
+                  <Input
+                    value={form.title}
+                    onChange={(e) =>
+                      setForm((f) =>
+                        f
+                          ? {
+                              ...f,
+                              title: e.target.value,
+                              slug: f.slugTouched ? f.slug : slugify(e.target.value),
+                            }
+                          : f,
+                      )
+                    }
+                  />
+                </Field>
+                <Field label="Slug" error={errors.slug}>
+                  <Input
+                    value={form.slug}
+                    onChange={(e) =>
+                      setForm((f) =>
+                        f ? { ...f, slug: e.target.value, slugTouched: true } : f,
+                      )
+                    }
+                    placeholder={autoSlug}
+                  />
+                </Field>
+              </div>
 
-          <Field label="Short description" error={errors.shortDescription}>
-            <Textarea
-              rows={2}
-              value={form.shortDescription}
-              onChange={(e) => upd("shortDescription", e.target.value)}
-            />
-          </Field>
+              <Field label="Short description" error={errors.shortDescription}>
+                <Textarea
+                  rows={2}
+                  value={form.shortDescription}
+                  onChange={(e) => upd("shortDescription", e.target.value)}
+                />
+              </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Problem">
-              <Textarea
-                rows={3}
-                value={form.problem}
-                onChange={(e) => upd("problem", e.target.value)}
-              />
-            </Field>
-            <Field label="Solution">
-              <Textarea
-                rows={3}
-                value={form.solution}
-                onChange={(e) => upd("solution", e.target.value)}
-              />
-            </Field>
-            <Field label="Architecture summary">
-              <Textarea
-                rows={3}
-                value={form.architecture}
-                onChange={(e) => upd("architecture", e.target.value)}
-              />
-            </Field>
-            <Field label="Results">
-              <Textarea
-                rows={3}
-                value={form.results}
-                onChange={(e) => upd("results", e.target.value)}
-              />
-            </Field>
-          </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Problem">
+                  <Textarea
+                    rows={3}
+                    value={form.problem}
+                    onChange={(e) => upd("problem", e.target.value)}
+                  />
+                </Field>
+                <Field label="Solution">
+                  <Textarea
+                    rows={3}
+                    value={form.solution}
+                    onChange={(e) => upd("solution", e.target.value)}
+                  />
+                </Field>
+                <Field label="Architecture summary">
+                  <Textarea
+                    rows={3}
+                    value={form.architecture}
+                    onChange={(e) => upd("architecture", e.target.value)}
+                  />
+                </Field>
+                <Field label="Results">
+                  <Textarea
+                    rows={3}
+                    value={form.results}
+                    onChange={(e) => upd("results", e.target.value)}
+                  />
+                </Field>
+              </div>
 
-          <Field label="Technologies" error={errors.technologies}>
-            <ChipInput
-              values={form.technologies}
-              onRemove={(i) =>
-                upd(
-                  "technologies",
-                  form.technologies.filter((_, idx) => idx !== i),
-                )
-              }
-              input={techInput}
-              setInput={setTechInput}
-              onKeyDown={(e) => onChipKey(e, "tech")}
-              placeholder="Python, PyTorch, FastAPI…"
-            />
-          </Field>
+              <Field label="Technologies" error={errors.technologies}>
+                <ChipInput
+                  values={form.technologies}
+                  onRemove={(i) =>
+                    upd(
+                      "technologies",
+                      form.technologies.filter((_, idx) => idx !== i),
+                    )
+                  }
+                  input={techInput}
+                  setInput={setTechInput}
+                  onKeyDown={(e) => onChipKey(e, "tech")}
+                  placeholder="Python, PyTorch, FastAPI…"
+                />
+              </Field>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="GitHub URL">
-              <Input
-                value={form.githubUrl}
-                onChange={(e) => upd("githubUrl", e.target.value)}
-              />
-            </Field>
-            <Field label="Live demo URL">
-              <Input
-                value={form.liveDemoUrl}
-                onChange={(e) => upd("liveDemoUrl", e.target.value)}
-              />
-            </Field>
-          </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="GitHub URL">
+                  <Input
+                    value={form.githubUrl}
+                    onChange={(e) => upd("githubUrl", e.target.value)}
+                  />
+                </Field>
+                <Field label="Live demo URL">
+                  <Input
+                    value={form.liveDemoUrl}
+                    onChange={(e) => upd("liveDemoUrl", e.target.value)}
+                  />
+                </Field>
+              </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Category" error={errors.category}>
-              <Select value={form.category} onValueChange={(v) => upd("category", v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Tags">
-              <ChipInput
-                values={form.tags}
-                onRemove={(i) =>
-                  upd(
-                    "tags",
-                    form.tags.filter((_, idx) => idx !== i),
-                  )
-                }
-                input={tagInput}
-                setInput={setTagInput}
-                onKeyDown={(e) => onChipKey(e, "tag")}
-                placeholder="rag, embeddings…"
-              />
-            </Field>
-          </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Category" error={errors.category}>
+                  <Select value={form.category} onValueChange={(v) => upd("category", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Tags">
+                  <ChipInput
+                    values={form.tags}
+                    onRemove={(i) =>
+                      upd(
+                        "tags",
+                        form.tags.filter((_, idx) => idx !== i),
+                      )
+                    }
+                    input={tagInput}
+                    setInput={setTagInput}
+                    onKeyDown={(e) => onChipKey(e, "tag")}
+                    placeholder="rag, embeddings…"
+                  />
+                </Field>
+              </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/40 px-4 py-3">
-            <div>
-              <p className="text-sm font-medium">Featured project</p>
-              <p className="text-xs text-muted-foreground">
-                Pin to the top of your portfolio.
+              <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/40 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium">Featured project</p>
+                  <p className="text-xs text-muted-foreground">
+                    Pin to the top of your portfolio.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.featured}
+                  onCheckedChange={(v) => upd("featured", v)}
+                />
+              </div>
+
+              <Field label="Screenshots">
+                <label
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragActive(true);
+                  }}
+                  onDragLeave={() => setDragActive(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragActive(false);
+                    handleFiles(e.dataTransfer.files);
+                  }}
+                  className={cn(
+                    "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-secondary/30 px-6 py-8 text-center transition-colors",
+                    dragActive && "border-primary bg-primary/5",
+                  )}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="sr-only"
+                    onChange={(e) => handleFiles(e.target.files)}
+                  />
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                  <p className="text-sm font-medium">Drop screenshots here or click to upload</p>
+                  <p className="text-xs text-muted-foreground">PNG, JPG up to a few MB each.</p>
+                </label>
+                {form.screenshots.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                    {form.screenshots.map((s, idx) => (
+                      <div
+                        key={s.url}
+                        className="group relative aspect-video overflow-hidden rounded-lg border border-border bg-muted"
+                      >
+                        <img
+                          src={s.url}
+                          alt={s.name}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            upd(
+                              "screenshots",
+                              form.screenshots.filter((_, i) => i !== idx),
+                            )
+                          }
+                          className="absolute right-1 top-1 rounded-full bg-background/80 p-1 opacity-0 transition-opacity group-hover:opacity-100"
+                          aria-label="Remove screenshot"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Field>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-1.5 text-destructive hover:text-destructive"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete project
+                </Button>
+                <Button type="submit" disabled={saveMutation.isPending}>
+                  {saveMutation.isPending ? "Saving…" : "Save changes"}
+                </Button>
+              </div>
+            </form>
+
+            <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Live preview
               </p>
+              <PreviewCard form={form} />
+            </aside>
+          </>
+        ) : (
+          <>
+            <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">Project details</h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  className="gap-1.5"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                <Field label="Title">
+                  <p className="text-base font-medium">{form.title || "—"}</p>
+                </Field>
+                <Field label="Slug">
+                  <p className="text-base text-muted-foreground font-mono">
+                    {form.slug || "—"}
+                  </p>
+                </Field>
+                <Field label="Short description">
+                  <p className="text-base text-muted-foreground">
+                    {form.shortDescription || "—"}
+                  </p>
+                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Problem">
+                    <p className="text-base text-muted-foreground whitespace-pre-wrap">
+                      {form.problem || "—"}
+                    </p>
+                  </Field>
+                  <Field label="Solution">
+                    <p className="text-base text-muted-foreground whitespace-pre-wrap">
+                      {form.solution || "—"}
+                    </p>
+                  </Field>
+                  <Field label="Architecture summary">
+                    <p className="text-base text-muted-foreground whitespace-pre-wrap">
+                      {form.architecture || "—"}
+                    </p>
+                  </Field>
+                  <Field label="Results">
+                    <p className="text-base text-muted-foreground whitespace-pre-wrap">
+                      {form.results || "—"}
+                    </p>
+                  </Field>
+                </div>
+
+                <Field label="Technologies">
+                  {form.technologies.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {form.technologies.map((t) => (
+                        <Badge key={t} variant="secondary" className="font-normal">
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-base text-muted-foreground">—</p>
+                  )}
+                </Field>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="GitHub URL">
+                    {form.githubUrl ? (
+                      <a
+                        href={form.githubUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-base text-accent hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        View
+                      </a>
+                    ) : (
+                      <p className="text-base text-muted-foreground">—</p>
+                    )}
+                  </Field>
+                  <Field label="Live demo URL">
+                    {form.liveDemoUrl ? (
+                      <a
+                        href={form.liveDemoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-base text-accent hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        View
+                      </a>
+                    ) : (
+                      <p className="text-base text-muted-foreground">—</p>
+                    )}
+                  </Field>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Category">
+                    <p className="text-base text-muted-foreground">
+                      {form.category || "—"}
+                    </p>
+                  </Field>
+                  <Field label="Tags">
+                    {form.tags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {form.tags.map((t) => (
+                          <Badge key={t} variant="secondary" className="font-normal">
+                            {t}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-base text-muted-foreground">—</p>
+                    )}
+                  </Field>
+                </div>
+
+                <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/40 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium">Featured project</p>
+                    <p className="text-xs text-muted-foreground">
+                      {form.featured ? "Pinned at the top of your portfolio." : "Not pinned."}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={form.featured}
+                    disabled
+                  />
+                </div>
+
+                <Field label="Screenshots">
+                  {form.screenshots.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                      {form.screenshots.map((s, idx) => (
+                        <div
+                          key={s.url}
+                          className="group relative aspect-video overflow-hidden rounded-lg border border-border bg-muted"
+                        >
+                          <img
+                            src={s.url}
+                            alt={s.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-base text-muted-foreground">No screenshots uploaded.</p>
+                  )}
+                </Field>
+              </div>
             </div>
-            <Switch
-              checked={form.featured}
-              onCheckedChange={(v) => upd("featured", v)}
-            />
-          </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-1.5 text-destructive hover:text-destructive"
-              onClick={() => setConfirmDelete(true)}
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete project
-            </Button>
-            <Button type="submit" disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? "Saving…" : "Save changes"}
-            </Button>
-          </div>
-        </form>
-
-        <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Live preview
-          </p>
-          <PreviewCard form={form} />
-        </aside>
+            <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Preview
+              </p>
+              <PreviewCard form={form} />
+            </aside>
+          </>
+        )}
       </div>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React,  { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -71,13 +71,15 @@ function ProjectsPage() {
   const query = useQuery({
     queryKey: ["projects"],
     queryFn: () => listProjects(token),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
       if (!res.ok) throw new Error("Failed to delete project");
     },
@@ -154,7 +156,12 @@ function ProjectsPage() {
             <NoMatchState />
           )
         ) : (
-          <ProjectsTable projects={filtered} username={username} onDelete={deleteMutation.mutate} />
+          <ProjectsTable
+            projects={filtered}
+            username={username}
+            onDelete={deleteMutation.mutate}
+            onNavigate={(id) => navigate({ to: "/dashboard/projects/$id", params: { id } })}
+          />
         )}
       </div>
 
@@ -163,14 +170,146 @@ function ProjectsPage() {
   );
 }
 
-function ProjectsTable({
+const ProjectRow = React.memo(function ProjectRow({
+  project,
+  username,
+  onDelete,
+  onNavigate,
+}: {
+  project: Project;
+  username: string;
+  onDelete: (id: string) => void;
+  onNavigate: (id: string) => void;
+}) {
+  return (
+    <TableRow
+      key={project.id}
+      style={{ cursor: "pointer" }}
+      onClick={() => onNavigate(project.id)}
+    >
+      <TableCell>
+        <Link
+          to="/dashboard/projects/$id"
+          params={{ id: project.id }}
+          className="flex items-center gap-3 hover:bg-secondary/50 rounded-md p-1.5 transition-colors"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex h-11 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+            {project.thumbnailUrl ? (
+              <img src={project.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <ImageIcon className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate font-medium hover:text-accent transition-colors">{project.title}</p>
+            {project.shortDescription ? (
+              <p className="truncate text-xs text-muted-foreground">{project.shortDescription}</p>
+            ) : null}
+          </div>
+        </Link>
+      </TableCell>
+      <TableCell>
+        <span className="text-sm text-muted-foreground">{project.category ?? "—"}</span>
+      </TableCell>
+            <TableCell>
+              <Badge
+                variant={project.status === "published" ? "default" : "secondary"}
+                className={cn(
+                  project.status === "published" &&
+                    "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300",
+                )}
+              >
+                {project.status === "published" ? "Published" : "Draft"}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-center">
+              <button
+                type="button"
+                aria-label={project.featured ? "Unfeature project" : "Feature project"}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Star
+                  className={cn("h-4 w-4", project.featured && "fill-amber-400 text-amber-400")}
+                />
+              </button>
+            </TableCell>
+            <TableCell>
+              <ProjectActionsMenu project={project} username={username} onDelete={onDelete} />
+            </TableCell>
+</TableRow>
+        );
+      }
+    );
+
+function ProjectActionsMenu({
+  project,
+  username,
+  onDelete,
+}: {
+  project: Project;
+  username: string;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Project actions" onClick={(e) => e.stopPropagation()}>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44" forceMount>
+        <DropdownMenuItem asChild>
+          <Link
+            to="/dashboard/projects/$id"
+            params={{ id: project.id }}
+            className="flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Link>
+        </DropdownMenuItem>
+        {username && (
+          <DropdownMenuItem asChild>
+            <Link
+              to="/p/$username/projects/$slug"
+              params={{ username, slug: project.slug }}
+              className="flex items-center gap-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Eye className="h-4 w-4" />
+              Preview
+            </Link>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(project.id);
+          }}
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const ProjectsTable = React.memo(function ProjectsTable({
   projects,
   username,
   onDelete,
+  onNavigate,
 }: {
   projects: Project[];
   username: string;
   onDelete: (id: string) => void;
+  onNavigate: (id: string) => void;
 }) {
   return (
     <Table>
@@ -184,113 +323,19 @@ function ProjectsTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {projects.map((p) => (
-          <TableRow
-            key={p.id}
-            onClick={(e) => {
-              // Only navigate if clicking on the row itself, not on interactive elements
-              if (
-                e.currentTarget === e.target ||
-                (e.target instanceof HTMLElement && e.target.closest("td") === e.currentTarget)
-              ) {
-                navigate({ to: "/dashboard/projects/$id", params: { id: p.id } });
-              }
-            }}
-            style={{ cursor: "pointer" }}
-          >
-            <TableCell>
-              <Link
-                to="/dashboard/projects/$id"
-                params={{ id: p.id }}
-                className="flex items-center gap-3 hover:bg-secondary/50 rounded-md p-1.5 transition-colors"
-              >
-                <div className="flex h-11 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
-                  {p.thumbnailUrl ? (
-                    <img src={p.thumbnailUrl} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate font-medium hover:text-accent transition-colors">{p.title}</p>
-                  {p.shortDescription ? (
-                    <p className="truncate text-xs text-muted-foreground">{p.shortDescription}</p>
-                  ) : null}
-                </div>
-              </Link>
-            </TableCell>
-            <TableCell>
-              <span className="text-sm text-muted-foreground">{p.category ?? "—"}</span>
-            </TableCell>
-            <TableCell>
-              <Badge
-                variant={p.status === "published" ? "default" : "secondary"}
-                className={cn(
-                  p.status === "published" &&
-                    "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300",
-                )}
-              >
-                {p.status === "published" ? "Published" : "Draft"}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-center">
-              <button
-                type="button"
-                aria-label={p.featured ? "Unfeature project" : "Feature project"}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
-              >
-                <Star
-                  className={cn("h-4 w-4", p.featured && "fill-amber-400 text-amber-400")}
-                />
-              </button>
-            </TableCell>
-            <TableCell>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Project actions">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/dashboard/projects/$id"
-                      params={{ id: p.id }}
-                      className="flex items-center gap-2"
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Edit
-                    </Link>
-                  </DropdownMenuItem>
-                  {username && (
-                    <DropdownMenuItem asChild>
-                      <Link
-                        to="/p/$username/projects/$slug"
-                        params={{ username, slug: p.slug }}
-                        className="flex items-center gap-2"
-                      >
-                        <Eye className="h-4 w-4" />
-                        Preview
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive cursor-pointer"
-                    onClick={() => onDelete(p.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </TableCell>
-          </TableRow>
+        {projects.map((project) => (
+          <ProjectRow
+            key={project.id}
+            project={project}
+            username={username}
+            onDelete={onDelete}
+            onNavigate={onNavigate}
+          />
         ))}
       </TableBody>
     </Table>
   );
-}
+});
 
 function LoadingSkeleton() {
   return (
