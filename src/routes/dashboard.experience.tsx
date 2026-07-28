@@ -3,14 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Briefcase,
-  X,
-  Loader2,
-} from "lucide-react";
+import { Plus, Pencil, Trash2, Briefcase, X, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,10 +38,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+import { AIDraftBox } from "@/components/dashboard/AIDraftBox";
+
 import { useAuth } from "@/lib/auth";
 import {
   createExperience,
   deleteExperience,
+  generateExperienceDescription,
   listExperiences,
   updateExperience,
   type Experience,
@@ -83,9 +79,7 @@ function ExperiencePage() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Experience & Skills
-        </h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Experience & Skills</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Curate your career timeline and highlight the tools you specialize in.
         </p>
@@ -156,8 +150,7 @@ function ExperienceSection() {
       qc.invalidateQueries({ queryKey: ["experiences"] });
       setConfirmDelete(null);
     },
-    onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not delete"),
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not delete"),
   });
 
   function openAdd() {
@@ -211,24 +204,13 @@ function ExperienceSection() {
             </Button>
           </div>
         ) : (
-          <Timeline
-            items={sorted}
-            onEdit={openEdit}
-            onDelete={(exp) => setConfirmDelete(exp)}
-          />
+          <Timeline items={sorted} onEdit={openEdit} onDelete={(exp) => setConfirmDelete(exp)} />
         )}
       </div>
 
-      <ExperiencePanel
-        open={panelOpen}
-        onOpenChange={setPanelOpen}
-        editing={editing}
-      />
+      <ExperiencePanel open={panelOpen} onOpenChange={setPanelOpen} editing={editing} />
 
-      <AlertDialog
-        open={Boolean(confirmDelete)}
-        onOpenChange={(o) => !o && setConfirmDelete(null)}
-      >
+      <AlertDialog open={Boolean(confirmDelete)} onOpenChange={(o) => !o && setConfirmDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove this experience?</AlertDialogTitle>
@@ -241,9 +223,7 @@ function ExperienceSection() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                confirmDelete && deleteMutation.mutate(confirmDelete.id)
-              }
+              onClick={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? "Removing…" : "Remove"}
@@ -274,10 +254,7 @@ function Timeline({
 }) {
   return (
     <ol className="relative space-y-6 pl-6">
-      <span
-        aria-hidden
-        className="absolute left-2 top-1 bottom-1 w-px bg-border"
-      />
+      <span aria-hidden className="absolute left-2 top-1 bottom-1 w-px bg-border" />
       {items.map((exp) => (
         <li key={exp.id} className="relative">
           <span
@@ -292,8 +269,7 @@ function Timeline({
                 <p className="text-sm text-muted-foreground">{exp.company}</p>
               </div>
               <p className="mt-0.5 text-xs uppercase tracking-wide text-muted-foreground">
-                {formatMonth(exp.startDate)} —{" "}
-                {exp.endDate ? formatMonth(exp.endDate) : "Present"}
+                {formatMonth(exp.startDate)} — {exp.endDate ? formatMonth(exp.endDate) : "Present"}
                 {exp.location ? ` · ${exp.location}` : ""}
               </p>
               {exp.description ? (
@@ -303,12 +279,7 @@ function Timeline({
               ) : null}
             </div>
             <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onEdit(exp)}
-                aria-label="Edit"
-              >
+              <Button variant="ghost" size="icon" onClick={() => onEdit(exp)} aria-label="Edit">
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
@@ -362,16 +333,32 @@ function ExperiencePanel({
 
   const mutation = useMutation({
     mutationFn: (input: ExperienceInput) =>
-      editing
-        ? updateExperience(token, editing.id, input)
-        : createExperience(token, input),
+      editing ? updateExperience(token, editing.id, input) : createExperience(token, input),
     onSuccess: () => {
       toast.success(editing ? "Experience updated" : "Experience added");
       qc.invalidateQueries({ queryKey: ["experiences"] });
       onOpenChange(false);
     },
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not save"),
+  });
+
+  const draftMutation = useMutation({
+    mutationFn: (prompt: string) =>
+      generateExperienceDescription(token, {
+        prompt,
+        role: form.role || undefined,
+        company: form.company || undefined,
+        startDate: form.startDate || undefined,
+        endDate: form.present ? null : form.endDate || undefined,
+      }),
+    onSuccess: (data) => {
+      if (data.description) {
+        setForm((f) => ({ ...f, description: data.description! }));
+        toast.success("AI draft ready — review before saving");
+      }
+    },
     onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not save"),
+      toast.error(err?.message ?? "Could not generate a description"),
   });
 
   function onSubmit(e: React.FormEvent) {
@@ -441,9 +428,7 @@ function ExperiencePanel({
               <Input
                 type="month"
                 value={form.startDate}
-                onChange={(e) =>
-                  setForm({ ...form, startDate: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
               />
             </FieldRow>
             <FieldRow label="End date">
@@ -475,13 +460,18 @@ function ExperiencePanel({
             />
           </div>
 
+          <AIDraftBox
+            label="Draft description with AI"
+            placeholder="e.g. Focus on the migration to microservices and the team I led…"
+            isGenerating={draftMutation.isPending}
+            onGenerate={(prompt) => draftMutation.mutate(prompt)}
+          />
+
           <FieldRow label="Description">
             <Textarea
               rows={5}
               value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="What you owned, what you shipped, what changed because of it."
             />
           </FieldRow>
@@ -497,11 +487,7 @@ function ExperiencePanel({
             Cancel
           </Button>
           <Button onClick={onSubmit} disabled={mutation.isPending}>
-            {mutation.isPending
-              ? "Saving…"
-              : editing
-                ? "Save changes"
-                : "Add experience"}
+            {mutation.isPending ? "Saving…" : editing ? "Save changes" : "Add experience"}
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -574,8 +560,7 @@ function SkillsSection() {
       setUseCustom(false);
       qc.invalidateQueries({ queryKey: ["skills"] });
     },
-    onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not add skill"),
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not add skill"),
   });
 
   const removeMutation = useMutation({
@@ -583,8 +568,7 @@ function SkillsSection() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["skills"] });
     },
-    onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not remove"),
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not remove"),
   });
 
   function submit(e: React.FormEvent) {

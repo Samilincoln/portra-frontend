@@ -83,9 +83,9 @@ function PublicBlogList() {
                 params={{ username, slug: post.slug }}
                 className="group flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-soft transition-shadow hover:shadow-elevated sm:flex-row sm:items-center sm:p-6"
               >
-                {post.coverImageUrl ? (
+                {post.coverImage ? (
                   <img
-                    src={post.coverImageUrl}
+                    src={post.coverImage}
                     alt={post.title}
                     className="h-32 w-full shrink-0 rounded-xl object-cover sm:h-24 sm:w-40"
                   />

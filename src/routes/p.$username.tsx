@@ -577,9 +577,9 @@ function BlogCard({ post, username }: { post: BlogPost; username: string }) {
       params={{ username, slug: post.slug }}
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-shadow hover:shadow-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      {post.coverImageUrl ? (
+      {post.coverImage ? (
         <div className="aspect-[16/9] overflow-hidden bg-muted">
-          <img src={post.coverImageUrl} alt={post.title} className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
+          <img src={post.coverImage} alt={post.title} className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
         </div>
       ) : (
         <div aria-hidden="true" className="aspect-[16/9] bg-gradient-to-br from-primary/10 to-accent/10" />

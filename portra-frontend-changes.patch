@@ -1,0 +1,1747 @@
+diff --git a/src/components/ThemeToggle.tsx b/src/components/ThemeToggle.tsx
+new file mode 100644
+index 0000000..1424c7a
+--- /dev/null
++++ b/src/components/ThemeToggle.tsx
+@@ -0,0 +1,20 @@
++import { Moon, Sun } from "lucide-react";
++import { Button } from "@/components/ui/button";
++import { useTheme } from "@/lib/theme";
++
++export function ThemeToggle({ className }: { className?: string }) {
++  const { resolvedTheme, toggleTheme } = useTheme();
++  const isDark = resolvedTheme === "dark";
++
++  return (
++    <Button
++      variant="ghost"
++      size="icon"
++      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
++      onClick={toggleTheme}
++      className={className}
++    >
++      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
++    </Button>
++  );
++}
+diff --git a/src/components/dashboard/AIDraftBox.tsx b/src/components/dashboard/AIDraftBox.tsx
+new file mode 100644
+index 0000000..d08ea84
+--- /dev/null
++++ b/src/components/dashboard/AIDraftBox.tsx
+@@ -0,0 +1,81 @@
++import { useState } from "react";
++import { Sparkles, Loader2, ChevronDown } from "lucide-react";
++import { Button } from "@/components/ui/button";
++import { Textarea } from "@/components/ui/textarea";
++import { cn } from "@/lib/utils";
++
++type Props = {
++  /** Called with the user's optional instructions when Generate is clicked. */
++  onGenerate: (prompt: string) => void | Promise<void>;
++  isGenerating?: boolean;
++  label?: string;
++  placeholder?: string;
++  /** Start expanded instead of behind a toggle button. */
++  defaultOpen?: boolean;
++  className?: string;
++};
++
++/**
++ * A small "AI draft" affordance: a toggleable prompt box with a Generate
++ * button. Used to let the user steer AI drafting (project summaries, blog
++ * posts, experience descriptions) with optional freeform instructions.
++ */
++export function AIDraftBox({
++  onGenerate,
++  isGenerating = false,
++  label = "Draft with AI",
++  placeholder = "Optional: give the AI some direction, e.g. tone, key points to hit, audience…",
++  defaultOpen = false,
++  className,
++}: Props) {
++  const [open, setOpen] = useState(defaultOpen);
++  const [prompt, setPrompt] = useState("");
++
++  return (
++    <div className={cn("rounded-xl border border-dashed border-accent/40 bg-accent/5", className)}>
++      <button
++        type="button"
++        onClick={() => setOpen((o) => !o)}
++        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
++      >
++        <span className="flex items-center gap-2 text-sm font-medium text-accent">
++          <Sparkles className="h-4 w-4" />
++          {label}
++        </span>
++        <ChevronDown
++          className={cn("h-4 w-4 text-muted-foreground transition-transform", open && "rotate-180")}
++        />
++      </button>
++      {open && (
++        <div className="space-y-3 border-t border-accent/20 px-4 py-3">
++          <Textarea
++            value={prompt}
++            onChange={(e) => setPrompt(e.target.value)}
++            placeholder={placeholder}
++            rows={2}
++            className="bg-background text-sm"
++          />
++          <div className="flex items-center justify-between gap-2">
++            <p className="text-xs text-muted-foreground">
++              Review anything the AI drafts before saving.
++            </p>
++            <Button
++              type="button"
++              size="sm"
++              onClick={() => onGenerate(prompt.trim())}
++              disabled={isGenerating}
++              className="gap-1.5"
++            >
++              {isGenerating ? (
++                <Loader2 className="h-4 w-4 animate-spin" />
++              ) : (
++                <Sparkles className="h-4 w-4" />
++              )}
++              Generate
++            </Button>
++          </div>
++        </div>
++      )}
++    </div>
++  );
++}
+diff --git a/src/components/dashboard/BlogEditor.tsx b/src/components/dashboard/BlogEditor.tsx
+index fa07005..9900a80 100644
+--- a/src/components/dashboard/BlogEditor.tsx
++++ b/src/components/dashboard/BlogEditor.tsx
+@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
+ import { useNavigate, Link } from "@tanstack/react-router";
+ import { toast } from "sonner";
+ import { z } from "zod";
+-import { ArrowLeft, Loader2, X } from "lucide-react";
++import { ArrowLeft, Edit, Loader2, Trash2, X } from "lucide-react";
+ 
+ import { Button } from "@/components/ui/button";
+ import { Input } from "@/components/ui/input";
+@@ -11,11 +11,24 @@ import { Label } from "@/components/ui/label";
+ import { Textarea } from "@/components/ui/textarea";
+ import { Switch } from "@/components/ui/switch";
+ import { Badge } from "@/components/ui/badge";
++import {
++  AlertDialog,
++  AlertDialogAction,
++  AlertDialogCancel,
++  AlertDialogContent,
++  AlertDialogDescription,
++  AlertDialogFooter,
++  AlertDialogHeader,
++  AlertDialogTitle,
++} from "@/components/ui/alert-dialog";
++import { AIDraftBox } from "@/components/dashboard/AIDraftBox";
+ 
+ import { useAuth } from "@/lib/auth";
+ import { slugify } from "@/lib/projects";
+ import {
+   createBlog,
++  deleteBlog,
++  generateBlogDraft,
+   renderMarkdown,
+   updateBlog,
+   type BlogInput,
+@@ -39,11 +52,16 @@ export function BlogEditor({ existing }: Props) {
+   const qc = useQueryClient();
+   const navigate = useNavigate();
+ 
++  // New posts always start in the editor; existing posts open in read-only
++  // view first, matching the project detail page's view/edit pattern.
++  const [isEditing, setIsEditing] = useState(!existing);
++  const [confirmDelete, setConfirmDelete] = useState(false);
++
+   const [title, setTitle] = useState(existing?.title ?? "");
+   const [slug, setSlug] = useState(existing?.slug ?? "");
+   const [slugTouched, setSlugTouched] = useState(Boolean(existing?.slug));
+   const [coverImageUrl, setCoverImageUrl] = useState(
+-    existing?.coverImageUrl ?? "",
++    existing?.coverImage ?? existing?.cover_image ?? "",
+   );
+   const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
+   const [tagInput, setTagInput] = useState("");
+@@ -61,20 +79,66 @@ export function BlogEditor({ existing }: Props) {
+ 
+   const mutation = useMutation({
+     mutationFn: (input: BlogInput) =>
+-      existing
+-        ? updateBlog(token, existing.id, input)
+-        : createBlog(token, input),
++      existing ? updateBlog(token, existing.id, input) : createBlog(token, input),
+     onSuccess: (data) => {
+       toast.success(existing ? "Post updated" : "Post created");
+       qc.invalidateQueries({ queryKey: ["blogs"] });
++      if (existing) qc.setQueryData(["blogs", existing.id], data);
+       if (!existing) {
+         navigate({ to: "/dashboard/blog/$id/edit", params: { id: data.id } });
++      } else {
++        setIsEditing(false);
+       }
+     },
++    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not save"),
++  });
++
++  const publishMutation = useMutation({
++    mutationFn: (nextPublished: boolean) =>
++      updateBlog(token, existing!.id, {
++        status: nextPublished ? "published" : "draft",
++      }),
++    onSuccess: (data, nextPublished) => {
++      toast.success(nextPublished ? "Post published" : "Moved to draft");
++      qc.setQueryData(["blogs", existing!.id], data);
++      qc.invalidateQueries({ queryKey: ["blogs"] });
++    },
++    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not update status"),
++  });
++
++  const deleteMutation = useMutation({
++    mutationFn: () => deleteBlog(token, existing!.id),
++    onSuccess: () => {
++      toast.success("Post deleted");
++      qc.invalidateQueries({ queryKey: ["blogs"] });
++      navigate({ to: "/dashboard/blog" });
++    },
++    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not delete"),
++  });
++
++  const draftMutation = useMutation({
++    mutationFn: (prompt: string) =>
++      generateBlogDraft(token, {
++        prompt,
++        title: title || undefined,
++        existingContent: content || undefined,
++        id: existing?.id,
++      }),
++    onSuccess: (data) => {
++      if (data.title) setTitle(data.title);
++      if (data.content) setContent(data.content);
++      if (data.tags?.length) setTags(Array.from(new Set([...tags, ...data.tags])));
++      toast.success("AI draft ready — review before publishing");
++    },
+     onError: (err: { message?: string }) =>
+-      toast.error(err?.message ?? "Could not save"),
++      toast.error(err?.message ?? "Could not generate a draft"),
+   });
+ 
++  function handleTogglePublish(v: boolean) {
++    setPublished(v);
++    if (existing) publishMutation.mutate(v);
++  }
++
+   function save(nextStatus: "draft" | "published") {
+     const payload: BlogInput = {
+       title,
+@@ -113,6 +177,20 @@ export function BlogEditor({ existing }: Props) {
+     }
+   }
+ 
++  function cancelEdit() {
++    if (!existing) return;
++    // Reset the form back to the saved post and drop out of edit mode.
++    setTitle(existing.title ?? "");
++    setSlug(existing.slug ?? "");
++    setSlugTouched(Boolean(existing.slug));
++    setCoverImageUrl(existing.coverImage ?? existing.cover_image ?? "");
++    setTags(existing.tags ?? []);
++    setContent(existing.content ?? "");
++    setPublished(existing.status === "published");
++    setErrors({});
++    setIsEditing(false);
++  }
++
+   return (
+     <div className="space-y-6">
+       <div className="flex flex-wrap items-start justify-between gap-4">
+@@ -125,8 +203,13 @@ export function BlogEditor({ existing }: Props) {
+             Back to blog
+           </Link>
+           <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+-            {existing ? "Edit post" : "New post"}
++            {existing ? title || "Untitled post" : "New post"}
+           </h1>
++          {existing && (
++            <p className="mt-1 text-sm text-muted-foreground">
++              {isEditing ? "Edit your post." : "View post details. Click Edit to make changes."}
++            </p>
++          )}
+         </div>
+         <div className="flex flex-wrap items-center gap-3">
+           <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-soft">
+@@ -135,123 +218,215 @@ export function BlogEditor({ existing }: Props) {
+             </span>
+             <Switch
+               checked={published}
+-              onCheckedChange={(v) => setPublished(v)}
++              onCheckedChange={handleTogglePublish}
++              disabled={publishMutation.isPending}
+             />
+           </div>
+-          <Button
+-            variant="outline"
+-            onClick={() => save("draft")}
+-            disabled={mutation.isPending}
+-          >
+-            Save draft
+-          </Button>
+-          <Button
+-            onClick={() => save("published")}
+-            disabled={mutation.isPending}
+-          >
+-            {mutation.isPending ? (
+-              <>
+-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+-                Publishing…
+-              </>
+-            ) : (
+-              "Publish"
+-            )}
+-          </Button>
+-        </div>
+-      </div>
+ 
+-      <div className="grid gap-4 sm:grid-cols-2">
+-        <div className="space-y-1.5">
+-          <Label>Title</Label>
+-          <Input
+-            value={title}
+-            onChange={(e) => setTitle(e.target.value)}
+-            placeholder="How I built a realtime vector index in Rust"
+-          />
+-          {errors.title && (
+-            <p className="text-xs text-destructive">{errors.title}</p>
++          {existing && !isEditing && (
++            <>
++              <Button
++                type="button"
++                variant="outline"
++                className="gap-1.5 text-destructive hover:text-destructive"
++                onClick={() => setConfirmDelete(true)}
++              >
++                <Trash2 className="h-4 w-4" />
++                Delete
++              </Button>
++              <Button type="button" onClick={() => setIsEditing(true)} className="gap-1.5">
++                <Edit className="h-4 w-4" />
++                Edit
++              </Button>
++            </>
+           )}
+-        </div>
+-        <div className="space-y-1.5">
+-          <Label>Slug</Label>
+-          <Input
+-            value={slug}
+-            onChange={(e) => {
+-              setSlug(e.target.value);
+-              setSlugTouched(true);
+-            }}
+-            placeholder={autoSlug || "my-post"}
+-          />
+-          {errors.slug && (
+-            <p className="text-xs text-destructive">{errors.slug}</p>
++
++          {existing && isEditing && (
++            <Button type="button" variant="outline" onClick={cancelEdit} className="gap-1.5">
++              <X className="h-4 w-4" />
++              Cancel
++            </Button>
++          )}
++
++          {isEditing && (
++            <>
++              <Button variant="outline" onClick={() => save("draft")} disabled={mutation.isPending}>
++                Save draft
++              </Button>
++              <Button onClick={() => save("published")} disabled={mutation.isPending}>
++                {mutation.isPending ? (
++                  <>
++                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
++                    Publishing…
++                  </>
++                ) : (
++                  "Publish"
++                )}
++              </Button>
++            </>
+           )}
+         </div>
+       </div>
+ 
+-      <div className="grid gap-4 sm:grid-cols-2">
+-        <div className="space-y-1.5">
+-          <Label>Cover image URL</Label>
+-          <Input
+-            value={coverImageUrl}
+-            onChange={(e) => setCoverImageUrl(e.target.value)}
+-            placeholder="https://…"
++      {isEditing ? (
++        <div className="space-y-6">
++          <AIDraftBox
++            label="Draft this post with AI"
++            placeholder="e.g. Write a technical deep-dive on the caching layer, aimed at backend engineers…"
++            isGenerating={draftMutation.isPending}
++            onGenerate={(prompt) => draftMutation.mutate(prompt)}
+           />
+-        </div>
+-        <div className="space-y-1.5">
+-          <Label>Tags</Label>
+-          <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
+-            {tags.map((t, i) => (
+-              <Badge key={`${t}-${i}`} variant="secondary" className="gap-1">
+-                {t}
+-                <button
+-                  type="button"
+-                  onClick={() => setTags(tags.filter((_, idx) => idx !== i))}
+-                  className="text-muted-foreground hover:text-foreground"
+-                  aria-label={`Remove ${t}`}
+-                >
+-                  <X className="h-3 w-3" />
+-                </button>
+-              </Badge>
+-            ))}
+-            <input
+-              value={tagInput}
+-              onChange={(e) => setTagInput(e.target.value)}
+-              onKeyDown={onTagKey}
+-              placeholder={tags.length ? "" : "rag, embeddings…"}
+-              className="flex-1 min-w-[8rem] bg-transparent px-1 py-0.5 text-sm outline-none"
+-            />
++
++          <div className="grid gap-4 sm:grid-cols-2">
++            <div className="space-y-1.5">
++              <Label>Title</Label>
++              <Input
++                value={title}
++                onChange={(e) => setTitle(e.target.value)}
++                placeholder="How I built a realtime vector index in Rust"
++              />
++              {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
++            </div>
++            <div className="space-y-1.5">
++              <Label>Slug</Label>
++              <Input
++                value={slug}
++                onChange={(e) => {
++                  setSlug(e.target.value);
++                  setSlugTouched(true);
++                }}
++                placeholder={autoSlug || "my-post"}
++              />
++              {errors.slug && <p className="text-xs text-destructive">{errors.slug}</p>}
++            </div>
+           </div>
+-        </div>
+-      </div>
+ 
+-      <div className="grid gap-4 lg:grid-cols-2">
+-        <div className="flex flex-col rounded-2xl border border-border bg-card shadow-soft">
+-          <div className="border-b border-border px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+-            Markdown
++          <div className="grid gap-4 sm:grid-cols-2">
++            <div className="space-y-1.5">
++              <Label>Cover image URL</Label>
++              <Input
++                value={coverImageUrl}
++                onChange={(e) => setCoverImageUrl(e.target.value)}
++                placeholder="https://…"
++              />
++            </div>
++            <div className="space-y-1.5">
++              <Label>Tags</Label>
++              <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
++                {tags.map((t, i) => (
++                  <Badge key={`${t}-${i}`} variant="secondary" className="gap-1">
++                    {t}
++                    <button
++                      type="button"
++                      onClick={() => setTags(tags.filter((_, idx) => idx !== i))}
++                      className="text-muted-foreground hover:text-foreground"
++                      aria-label={`Remove ${t}`}
++                    >
++                      <X className="h-3 w-3" />
++                    </button>
++                  </Badge>
++                ))}
++                <input
++                  value={tagInput}
++                  onChange={(e) => setTagInput(e.target.value)}
++                  onKeyDown={onTagKey}
++                  placeholder={tags.length ? "" : "rag, embeddings…"}
++                  className="flex-1 min-w-[8rem] bg-transparent px-1 py-0.5 text-sm outline-none"
++                />
++              </div>
++            </div>
++          </div>
++
++          <div className="grid gap-4 lg:grid-cols-2">
++            <div className="flex flex-col rounded-2xl border border-border bg-card shadow-soft">
++              <div className="border-b border-border px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
++                Markdown
++              </div>
++              <Textarea
++                value={content}
++                onChange={(e) => setContent(e.target.value)}
++                placeholder={`# Heading\n\nWrite in **markdown**.`}
++                className="min-h-[520px] flex-1 rounded-none border-0 bg-transparent font-mono text-sm focus-visible:ring-0"
++              />
++              {errors.content && (
++                <p className="px-4 pb-2 text-xs text-destructive">{errors.content}</p>
++              )}
++            </div>
++            <div className="flex flex-col rounded-2xl border border-border bg-card shadow-soft">
++              <div className="border-b border-border px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
++                Preview
++              </div>
++              <div
++                className="prose prose-sm max-w-none flex-1 space-y-3 overflow-y-auto p-5 text-sm text-foreground/90"
++                dangerouslySetInnerHTML={{
++                  __html:
++                    previewHtml ||
++                    "<p class='text-muted-foreground'>Start writing to see a preview.</p>",
++                }}
++              />
++            </div>
+           </div>
+-          <Textarea
+-            value={content}
+-            onChange={(e) => setContent(e.target.value)}
+-            placeholder={`# Heading\n\nWrite in **markdown**.`}
+-            className="min-h-[520px] flex-1 rounded-none border-0 bg-transparent font-mono text-sm focus-visible:ring-0"
+-          />
+-          {errors.content && (
+-            <p className="px-4 pb-2 text-xs text-destructive">
+-              {errors.content}
+-            </p>
+-          )}
+         </div>
+-        <div className="flex flex-col rounded-2xl border border-border bg-card shadow-soft">
+-          <div className="border-b border-border px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+-            Preview
++      ) : (
++        <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
++          {coverImageUrl && (
++            <div className="aspect-[3/1] w-full overflow-hidden rounded-xl border border-border bg-muted">
++              <img src={coverImageUrl} alt="" className="h-full w-full object-cover" />
++            </div>
++          )}
++
++          <div className="grid gap-4 sm:grid-cols-2">
++            <div className="space-y-1.5">
++              <Label className="text-sm">Slug</Label>
++              <p className="font-mono text-base text-muted-foreground">/{slug || "—"}</p>
++            </div>
++            <div className="space-y-1.5">
++              <Label className="text-sm">Tags</Label>
++              {tags.length > 0 ? (
++                <div className="flex flex-wrap gap-1.5">
++                  {tags.map((t) => (
++                    <Badge key={t} variant="secondary" className="font-normal">
++                      {t}
++                    </Badge>
++                  ))}
++                </div>
++              ) : (
++                <p className="text-base text-muted-foreground">—</p>
++              )}
++            </div>
++          </div>
++
++          <div className="space-y-1.5">
++            <Label className="text-sm">Content</Label>
++            <div
++              className="prose prose-sm max-w-none space-y-3 rounded-xl border border-border bg-background/50 p-5 text-sm text-foreground/90"
++              dangerouslySetInnerHTML={{
++                __html: previewHtml || "<p class='text-muted-foreground'>Nothing written yet.</p>",
++              }}
++            />
+           </div>
+-          <div
+-            className="prose prose-sm max-w-none flex-1 space-y-3 overflow-y-auto p-5 text-sm text-foreground/90"
+-            dangerouslySetInnerHTML={{ __html: previewHtml || "<p class='text-muted-foreground'>Start writing to see a preview.</p>" }}
+-          />
+         </div>
+-      </div>
++      )}
++
++      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
++        <AlertDialogContent>
++          <AlertDialogHeader>
++            <AlertDialogTitle>Delete this post?</AlertDialogTitle>
++            <AlertDialogDescription>
++              This removes the post from your blog and can't be undone.
++            </AlertDialogDescription>
++          </AlertDialogHeader>
++          <AlertDialogFooter>
++            <AlertDialogCancel>Cancel</AlertDialogCancel>
++            <AlertDialogAction
++              onClick={() => deleteMutation.mutate()}
++              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
++            >
++              {deleteMutation.isPending ? "Deleting…" : "Delete"}
++            </AlertDialogAction>
++          </AlertDialogFooter>
++        </AlertDialogContent>
++      </AlertDialog>
+     </div>
+   );
+ }
+diff --git a/src/components/layouts/AppShell.tsx b/src/components/layouts/AppShell.tsx
+index c5c0aaf..0b5894a 100644
+--- a/src/components/layouts/AppShell.tsx
++++ b/src/components/layouts/AppShell.tsx
+@@ -27,6 +27,7 @@ import {
+ } from "@/components/ui/dropdown-menu";
+ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+ import { useAuth } from "@/lib/auth";
++import { ThemeToggle } from "@/components/ThemeToggle";
+ 
+ const nav: Array<{
+   to:
+@@ -55,13 +56,7 @@ function initials(name?: string, email?: string) {
+   return chars.toUpperCase();
+ }
+ 
+-function NavList({
+-  pathname,
+-  onNavigate,
+-}: {
+-  pathname: string;
+-  onNavigate?: () => void;
+-}) {
++function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+   return (
+     <nav className="flex-1 space-y-1 px-3 py-4">
+       {nav.map((item) => {
+@@ -146,7 +141,10 @@ export function AppShell({ children }: { children: ReactNode }) {
+           </Sheet>
+ 
+           <div className="relative hidden max-w-md flex-1 sm:block">
+-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
++            <Search
++              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
++              aria-hidden="true"
++            />
+             <label htmlFor="topbar-search" className="sr-only">
+               Search projects and posts
+             </label>
+@@ -158,6 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
+             />
+           </div>
+           <div className="flex-1 sm:flex-none" />
++          <ThemeToggle />
+           <Button variant="ghost" size="icon" aria-label="Notifications">
+             <Bell className="h-4 w-4" />
+           </Button>
+@@ -186,7 +185,10 @@ export function AppShell({ children }: { children: ReactNode }) {
+                 </Link>
+               </DropdownMenuItem>
+               <DropdownMenuSeparator />
+-              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
++              <DropdownMenuItem
++                onClick={handleLogout}
++                className="text-destructive focus:text-destructive"
++              >
+                 <LogOut className="h-4 w-4" />
+                 Log out
+               </DropdownMenuItem>
+diff --git a/src/components/layouts/PublicLayout.tsx b/src/components/layouts/PublicLayout.tsx
+index 20d1665..9c2aed9 100644
+--- a/src/components/layouts/PublicLayout.tsx
++++ b/src/components/layouts/PublicLayout.tsx
+@@ -1,6 +1,7 @@
+ import { Link } from "@tanstack/react-router";
+ import type { ReactNode } from "react";
+ import { Sparkles } from "lucide-react";
++import { ThemeToggle } from "@/components/ThemeToggle";
+ 
+ export function PublicLayout({ children }: { children: ReactNode }) {
+   return (
+@@ -13,7 +14,8 @@ export function PublicLayout({ children }: { children: ReactNode }) {
+             </div>
+             <span className="text-lg font-semibold tracking-tight">Portra</span>
+           </Link>
+-          <nav className="flex items-center gap-6 text-sm font-medium text-muted-foreground">
++          <nav className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
++            <ThemeToggle />
+             <Link to="/login" className="hover:text-foreground">
+               Log in
+             </Link>
+@@ -31,8 +33,12 @@ export function PublicLayout({ children }: { children: ReactNode }) {
+         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-8 text-sm text-muted-foreground md:flex-row">
+           <p>© {new Date().getFullYear()} Portra. Portfolios for engineers.</p>
+           <div className="flex gap-6">
+-            <a href="#" className="hover:text-foreground">Privacy</a>
+-            <a href="#" className="hover:text-foreground">Terms</a>
++            <a href="#" className="hover:text-foreground">
++              Privacy
++            </a>
++            <a href="#" className="hover:text-foreground">
++              Terms
++            </a>
+           </div>
+         </div>
+       </footer>
+diff --git a/src/lib/blog.ts b/src/lib/blog.ts
+index 19ab5b0..0582197 100644
+--- a/src/lib/blog.ts
++++ b/src/lib/blog.ts
+@@ -36,14 +36,10 @@ function authHeaders(token: string | null): HeadersInit {
+ 
+ async function handle<T>(res: Response): Promise<T> {
+   const ct = res.headers.get("content-type") ?? "";
+-  const data = ct.includes("application/json")
+-    ? await res.json().catch(() => ({}))
+-    : {};
++  const data = ct.includes("application/json") ? await res.json().catch(() => ({})) : {};
+   if (!res.ok) {
+     throw {
+-      message:
+-        (data as { message?: string }).message ??
+-        `Request failed (${res.status})`,
++      message: (data as { message?: string }).message ?? `Request failed (${res.status})`,
+       fields: (data as { fields?: Record<string, string> }).fields,
+     } satisfies AuthApiError;
+   }
+@@ -52,10 +48,11 @@ async function handle<T>(res: Response): Promise<T> {
+ 
+ export async function listBlogs(
+   token: string | null,
+-  params?: { published_only?: boolean; skip?: number; limit?: number }
++  params?: { published_only?: boolean; skip?: number; limit?: number },
+ ): Promise<BlogPost[]> {
+   const search = new URLSearchParams();
+-  if (params?.published_only !== undefined) search.set("published_only", String(params.published_only));
++  if (params?.published_only !== undefined)
++    search.set("published_only", String(params.published_only));
+   if (params?.skip !== undefined) search.set("skip", String(params.skip));
+   if (params?.limit !== undefined) search.set("limit", String(params.limit));
+ 
+@@ -66,20 +63,14 @@ export async function listBlogs(
+   return Array.isArray(data) ? data : (data.posts ?? []);
+ }
+ 
+-export async function getBlog(
+-  token: string | null,
+-  id: string,
+-): Promise<BlogPost> {
++export async function getBlog(token: string | null, id: string): Promise<BlogPost> {
+   const res = await fetch(`${API_BASE_URL}/api/v1/blog/${id}`, {
+     headers: authHeaders(token),
+   });
+   return handle<BlogPost>(res);
+ }
+ 
+-export async function createBlog(
+-  token: string | null,
+-  input: BlogInput,
+-): Promise<BlogPost> {
++export async function createBlog(token: string | null, input: BlogInput): Promise<BlogPost> {
+   const res = await fetch(`${API_BASE_URL}/api/v1/blog`, {
+     method: "POST",
+     headers: authHeaders(token),
+@@ -101,10 +92,7 @@ export async function updateBlog(
+   return handle<BlogPost>(res);
+ }
+ 
+-export async function deleteBlog(
+-  token: string | null,
+-  id: string,
+-): Promise<void> {
++export async function deleteBlog(token: string | null, id: string): Promise<void> {
+   const res = await fetch(`${API_BASE_URL}/api/v1/blog/${id}`, {
+     method: "DELETE",
+     headers: authHeaders(token),
+@@ -112,17 +100,31 @@ export async function deleteBlog(
+   if (!res.ok && res.status !== 204) await handle(res);
+ }
+ 
++/**
++ * Ask the backend to draft (or refine) a blog post from a topic/prompt.
++ * Requires a matching `POST /api/v1/blog/generate` endpoint — pass the post
++ * id when refining an existing draft so the backend has the current content
++ * as context.
++ */
++export async function generateBlogDraft(
++  token: string | null,
++  input: { prompt: string; title?: string; existingContent?: string; id?: string },
++): Promise<{ title?: string; content?: string; excerpt?: string; tags?: string[] }> {
++  const res = await fetch(`${API_BASE_URL}/api/v1/blog/generate`, {
++    method: "POST",
++    headers: authHeaders(token),
++    body: JSON.stringify(input),
++  });
++  return handle(res);
++}
++
+ /**
+  * Tiny, dependency-free markdown → HTML renderer.
+  * Supports: headings (# .. ###), bold **x**, italic *x*, inline `code`,
+  * links [t](u), code fences ```, unordered lists, blockquotes, paragraphs.
+  */
+ export function renderMarkdown(md: string): string {
+-  const esc = (s: string) =>
+-    s
+-      .replace(/&/g, "&amp;")
+-      .replace(/</g, "&lt;")
+-      .replace(/>/g, "&gt;");
++  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+ 
+   const lines = md.replace(/\r\n/g, "\n").split("\n");
+   const out: string[] = [];
+@@ -150,7 +152,10 @@ export function renderMarkdown(md: string): string {
+ 
+   const inline = (s: string) => {
+     let x = esc(s);
+-    x = x.replace(/`([^`]+)`/g, "<code class='rounded bg-muted px-1 py-0.5 text-[0.85em]'>$1</code>");
++    x = x.replace(
++      /`([^`]+)`/g,
++      "<code class='rounded bg-muted px-1 py-0.5 text-[0.85em]'>$1</code>",
++    );
+     x = x.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+     x = x.replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
+     x = x.replace(
+diff --git a/src/lib/experiences.ts b/src/lib/experiences.ts
+index d2a33cd..b8ecde7 100644
+--- a/src/lib/experiences.ts
++++ b/src/lib/experiences.ts
+@@ -27,14 +27,10 @@ function authHeaders(token: string | null): HeadersInit {
+ 
+ async function handle<T>(res: Response): Promise<T> {
+   const ct = res.headers.get("content-type") ?? "";
+-  const data = ct.includes("application/json")
+-    ? await res.json().catch(() => ({}))
+-    : {};
++  const data = ct.includes("application/json") ? await res.json().catch(() => ({})) : {};
+   if (!res.ok) {
+     throw {
+-      message:
+-        (data as { message?: string }).message ??
+-        `Request failed (${res.status})`,
++      message: (data as { message?: string }).message ?? `Request failed (${res.status})`,
+       fields: (data as { fields?: Record<string, string> }).fields,
+     } satisfies AuthApiError;
+   }
+@@ -43,7 +39,7 @@ async function handle<T>(res: Response): Promise<T> {
+ 
+ export async function listExperiences(
+   token: string | null,
+-  params?: { skip?: number; limit?: number }
++  params?: { skip?: number; limit?: number },
+ ): Promise<Experience[]> {
+   const search = new URLSearchParams();
+   if (params?.skip !== undefined) search.set("skip", String(params.skip));
+@@ -68,10 +64,7 @@ export async function createExperience(
+   return handle<Experience>(res);
+ }
+ 
+-export async function getExperience(
+-  token: string | null,
+-  id: string,
+-): Promise<Experience> {
++export async function getExperience(token: string | null, id: string): Promise<Experience> {
+   const res = await fetch(`${API_BASE_URL}/api/v1/experiences/${id}`, {
+     headers: authHeaders(token),
+   });
+@@ -91,13 +84,33 @@ export async function updateExperience(
+   return handle<Experience>(res);
+ }
+ 
+-export async function deleteExperience(
+-  token: string | null,
+-  id: string,
+-): Promise<void> {
++export async function deleteExperience(token: string | null, id: string): Promise<void> {
+   const res = await fetch(`${API_BASE_URL}/api/v1/experiences/${id}`, {
+     method: "DELETE",
+     headers: authHeaders(token),
+   });
+   if (!res.ok && res.status !== 204) await handle(res);
+ }
++
++/**
++ * Ask the backend to draft a role description from a short prompt plus
++ * whatever role/company/dates are already filled in. Requires a matching
++ * `POST /api/v1/experiences/generate-description` endpoint.
++ */
++export async function generateExperienceDescription(
++  token: string | null,
++  input: {
++    prompt: string;
++    role?: string;
++    company?: string;
++    startDate?: string;
++    endDate?: string | null;
++  },
++): Promise<{ description?: string }> {
++  const res = await fetch(`${API_BASE_URL}/api/v1/experiences/generate-description`, {
++    method: "POST",
++    headers: authHeaders(token),
++    body: JSON.stringify(input),
++  });
++  return handle(res);
++}
+diff --git a/src/lib/projects.ts b/src/lib/projects.ts
+index dce4557..6a1ccc1 100644
+--- a/src/lib/projects.ts
++++ b/src/lib/projects.ts
+@@ -79,14 +79,10 @@ function authHeaders(token: string | null): HeadersInit {
+ 
+ async function handle<T>(res: Response): Promise<T> {
+   const ct = res.headers.get("content-type") ?? "";
+-  const data = ct.includes("application/json")
+-    ? await res.json().catch(() => ({}))
+-    : {};
++  const data = ct.includes("application/json") ? await res.json().catch(() => ({})) : {};
+   if (!res.ok) {
+     throw {
+-      message:
+-        (data as { message?: string }).message ??
+-        `Request failed (${res.status})`,
++      message: (data as { message?: string }).message ?? `Request failed (${res.status})`,
+       fields: (data as { fields?: Record<string, string> }).fields,
+     } satisfies AuthApiError;
+   }
+@@ -114,10 +110,7 @@ export async function createProject(
+   return normalizeProject(await handle<Project>(res));
+ }
+ 
+-export async function getProject(
+-  token: string | null,
+-  id: string,
+-): Promise<Project> {
++export async function getProject(token: string | null, id: string): Promise<Project> {
+   const res = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
+     headers: authHeaders(token),
+   });
+@@ -137,10 +130,7 @@ export async function updateProject(
+   return normalizeProject(await handle<Project>(res));
+ }
+ 
+-export async function deleteProject(
+-  token: string | null,
+-  id: string,
+-): Promise<void> {
++export async function deleteProject(token: string | null, id: string): Promise<void> {
+   const res = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
+     method: "DELETE",
+     headers: authHeaders(token),
+@@ -151,11 +141,19 @@ export async function deleteProject(
+ export async function generateProjectSummary(
+   token: string | null,
+   id: string,
+-): Promise<{ shortDescription?: string; architecture?: string; solution?: string; problem?: string; results?: string }> {
+-  const res = await fetch(
+-    `${API_BASE_URL}/api/v1/projects/${id}/generate-summary`,
+-    { method: "POST", headers: authHeaders(token) },
+-  );
++  prompt?: string,
++): Promise<{
++  shortDescription?: string;
++  architecture?: string;
++  solution?: string;
++  problem?: string;
++  results?: string;
++}> {
++  const res = await fetch(`${API_BASE_URL}/api/v1/projects/${id}/generate-summary`, {
++    method: "POST",
++    headers: authHeaders(token),
++    body: JSON.stringify({ prompt: prompt || undefined }),
++  });
+   return handle(res);
+ }
+ 
+diff --git a/src/lib/theme.tsx b/src/lib/theme.tsx
+new file mode 100644
+index 0000000..6d7e032
+--- /dev/null
++++ b/src/lib/theme.tsx
+@@ -0,0 +1,117 @@
++import {
++  createContext,
++  useCallback,
++  useContext,
++  useEffect,
++  useMemo,
++  useState,
++  type ReactNode,
++} from "react";
++
++export type Theme = "light" | "dark" | "system";
++
++type ThemeState = {
++  theme: Theme;
++  resolvedTheme: "light" | "dark";
++  setTheme: (theme: Theme) => void;
++  toggleTheme: () => void;
++};
++
++const STORAGE_KEY = "portra_theme";
++
++const ThemeContext = createContext<ThemeState | null>(null);
++
++/**
++ * Inline script source injected into <head> so the correct class is applied
++ * to <html> before React hydrates — avoids a light/dark flash on load.
++ * Keep this in sync with resolveSystemTheme()/applyTheme() below.
++ */
++export const NO_FLASH_THEME_SCRIPT = `
++(function () {
++  try {
++    var stored = localStorage.getItem("${STORAGE_KEY}");
++    var theme = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
++    var resolved =
++      theme === "system"
++        ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
++        : theme;
++    document.documentElement.classList.toggle("dark", resolved === "dark");
++    document.documentElement.style.colorScheme = resolved;
++  } catch (e) {}
++})();
++`;
++
++function resolveSystemTheme(): "light" | "dark" {
++  if (typeof window === "undefined") return "light";
++  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
++}
++
++function applyTheme(resolved: "light" | "dark") {
++  const root = document.documentElement;
++  root.classList.toggle("dark", resolved === "dark");
++  root.style.colorScheme = resolved;
++}
++
++function loadStoredTheme(): Theme {
++  if (typeof window === "undefined") return "system";
++  try {
++    const stored = localStorage.getItem(STORAGE_KEY);
++    if (stored === "light" || stored === "dark" || stored === "system") {
++      return stored;
++    }
++  } catch {
++    // ignore
++  }
++  return "system";
++}
++
++export function ThemeProvider({ children }: { children: ReactNode }) {
++  const [theme, setThemeState] = useState<Theme>(() => loadStoredTheme());
++  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">(() =>
++    theme === "system" ? resolveSystemTheme() : theme,
++  );
++
++  useEffect(() => {
++    const resolved = theme === "system" ? resolveSystemTheme() : theme;
++    setResolvedTheme(resolved);
++    applyTheme(resolved);
++  }, [theme]);
++
++  useEffect(() => {
++    if (theme !== "system") return;
++    const mql = window.matchMedia("(prefers-color-scheme: dark)");
++    const onChange = () => {
++      const resolved = resolveSystemTheme();
++      setResolvedTheme(resolved);
++      applyTheme(resolved);
++    };
++    mql.addEventListener("change", onChange);
++    return () => mql.removeEventListener("change", onChange);
++  }, [theme]);
++
++  const setTheme = useCallback((next: Theme) => {
++    setThemeState(next);
++    try {
++      localStorage.setItem(STORAGE_KEY, next);
++    } catch {
++      // ignore
++    }
++  }, []);
++
++  const toggleTheme = useCallback(() => {
++    setTheme(resolvedTheme === "dark" ? "light" : "dark");
++  }, [resolvedTheme, setTheme]);
++
++  const value = useMemo(
++    () => ({ theme, resolvedTheme, setTheme, toggleTheme }),
++    [theme, resolvedTheme, setTheme, toggleTheme],
++  );
++
++  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
++}
++
++export function useTheme(): ThemeState {
++  const ctx = useContext(ThemeContext);
++  if (!ctx) throw new Error("useTheme must be used within a ThemeProvider");
++  return ctx;
++}
+diff --git a/src/routes/__root.tsx b/src/routes/__root.tsx
+index 6e40c5d..a0f0b82 100644
+--- a/src/routes/__root.tsx
++++ b/src/routes/__root.tsx
+@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
+ import appCss from "../styles.css?url";
+ import { reportLovableError } from "../lib/lovable-error-reporting";
+ import { AuthProvider } from "../lib/auth";
++import { ThemeProvider, NO_FLASH_THEME_SCRIPT } from "../lib/theme";
+ import { Toaster } from "../components/ui/sonner";
+ 
+ function NotFoundComponent() {
+@@ -82,8 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
+       { title: "Portra — Portfolios for AI & backend engineers" },
+       {
+         name: "description",
+-        content:
+-          "Portra is the premium portfolio platform for AI and backend engineers.",
++        content: "Portra is the premium portfolio platform for AI and backend engineers.",
+       },
+       { name: "author", content: "Portra" },
+       { property: "og:title", content: "Portra" },
+@@ -110,11 +110,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
+ 
+ function RootShell({ children }: { children: ReactNode }) {
+   return (
+-    <html lang="en">
++    <html lang="en" suppressHydrationWarning>
+       <head>
+         <HeadContent />
++        {/* Sets the dark/light class before hydration to avoid a theme flash */}
++        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME_SCRIPT }} />
+       </head>
+-      <body>
++      <body suppressHydrationWarning>
+         {children}
+         <Scripts />
+       </body>
+@@ -126,12 +128,14 @@ function RootComponent() {
+   const { queryClient } = Route.useRouteContext();
+ 
+   return (
+-    <QueryClientProvider client={queryClient}>
+-      <AuthProvider>
+-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+-        <Outlet />
+-        <Toaster />
+-      </AuthProvider>
+-    </QueryClientProvider>
++    <ThemeProvider>
++      <QueryClientProvider client={queryClient}>
++        <AuthProvider>
++          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
++          <Outlet />
++          <Toaster />
++        </AuthProvider>
++      </QueryClientProvider>
++    </ThemeProvider>
+   );
+ }
+diff --git a/src/routes/dashboard.experience.tsx b/src/routes/dashboard.experience.tsx
+index f19d5ca..eb4023b 100644
+--- a/src/routes/dashboard.experience.tsx
++++ b/src/routes/dashboard.experience.tsx
+@@ -3,14 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
+ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+ import { toast } from "sonner";
+ import { z } from "zod";
+-import {
+-  Plus,
+-  Pencil,
+-  Trash2,
+-  Briefcase,
+-  X,
+-  Loader2,
+-} from "lucide-react";
++import { Plus, Pencil, Trash2, Briefcase, X, Loader2 } from "lucide-react";
+ 
+ import { Button } from "@/components/ui/button";
+ import { Input } from "@/components/ui/input";
+@@ -45,10 +38,13 @@ import {
+   AlertDialogTitle,
+ } from "@/components/ui/alert-dialog";
+ 
++import { AIDraftBox } from "@/components/dashboard/AIDraftBox";
++
+ import { useAuth } from "@/lib/auth";
+ import {
+   createExperience,
+   deleteExperience,
++  generateExperienceDescription,
+   listExperiences,
+   updateExperience,
+   type Experience,
+@@ -83,9 +79,7 @@ function ExperiencePage() {
+   return (
+     <div className="space-y-10">
+       <div>
+-        <h1 className="text-3xl font-semibold tracking-tight">
+-          Experience & Skills
+-        </h1>
++        <h1 className="text-3xl font-semibold tracking-tight">Experience & Skills</h1>
+         <p className="mt-1 text-sm text-muted-foreground">
+           Curate your career timeline and highlight the tools you specialize in.
+         </p>
+@@ -156,8 +150,7 @@ function ExperienceSection() {
+       qc.invalidateQueries({ queryKey: ["experiences"] });
+       setConfirmDelete(null);
+     },
+-    onError: (err: { message?: string }) =>
+-      toast.error(err?.message ?? "Could not delete"),
++    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not delete"),
+   });
+ 
+   function openAdd() {
+@@ -211,24 +204,13 @@ function ExperienceSection() {
+             </Button>
+           </div>
+         ) : (
+-          <Timeline
+-            items={sorted}
+-            onEdit={openEdit}
+-            onDelete={(exp) => setConfirmDelete(exp)}
+-          />
++          <Timeline items={sorted} onEdit={openEdit} onDelete={(exp) => setConfirmDelete(exp)} />
+         )}
+       </div>
+ 
+-      <ExperiencePanel
+-        open={panelOpen}
+-        onOpenChange={setPanelOpen}
+-        editing={editing}
+-      />
++      <ExperiencePanel open={panelOpen} onOpenChange={setPanelOpen} editing={editing} />
+ 
+-      <AlertDialog
+-        open={Boolean(confirmDelete)}
+-        onOpenChange={(o) => !o && setConfirmDelete(null)}
+-      >
++      <AlertDialog open={Boolean(confirmDelete)} onOpenChange={(o) => !o && setConfirmDelete(null)}>
+         <AlertDialogContent>
+           <AlertDialogHeader>
+             <AlertDialogTitle>Remove this experience?</AlertDialogTitle>
+@@ -241,9 +223,7 @@ function ExperienceSection() {
+           <AlertDialogFooter>
+             <AlertDialogCancel>Cancel</AlertDialogCancel>
+             <AlertDialogAction
+-              onClick={() =>
+-                confirmDelete && deleteMutation.mutate(confirmDelete.id)
+-              }
++              onClick={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
+               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+             >
+               {deleteMutation.isPending ? "Removing…" : "Remove"}
+@@ -274,10 +254,7 @@ function Timeline({
+ }) {
+   return (
+     <ol className="relative space-y-6 pl-6">
+-      <span
+-        aria-hidden
+-        className="absolute left-2 top-1 bottom-1 w-px bg-border"
+-      />
++      <span aria-hidden className="absolute left-2 top-1 bottom-1 w-px bg-border" />
+       {items.map((exp) => (
+         <li key={exp.id} className="relative">
+           <span
+@@ -292,8 +269,7 @@ function Timeline({
+                 <p className="text-sm text-muted-foreground">{exp.company}</p>
+               </div>
+               <p className="mt-0.5 text-xs uppercase tracking-wide text-muted-foreground">
+-                {formatMonth(exp.startDate)} —{" "}
+-                {exp.endDate ? formatMonth(exp.endDate) : "Present"}
++                {formatMonth(exp.startDate)} — {exp.endDate ? formatMonth(exp.endDate) : "Present"}
+                 {exp.location ? ` · ${exp.location}` : ""}
+               </p>
+               {exp.description ? (
+@@ -303,12 +279,7 @@ function Timeline({
+               ) : null}
+             </div>
+             <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+-              <Button
+-                variant="ghost"
+-                size="icon"
+-                onClick={() => onEdit(exp)}
+-                aria-label="Edit"
+-              >
++              <Button variant="ghost" size="icon" onClick={() => onEdit(exp)} aria-label="Edit">
+                 <Pencil className="h-4 w-4" />
+               </Button>
+               <Button
+@@ -362,16 +333,32 @@ function ExperiencePanel({
+ 
+   const mutation = useMutation({
+     mutationFn: (input: ExperienceInput) =>
+-      editing
+-        ? updateExperience(token, editing.id, input)
+-        : createExperience(token, input),
++      editing ? updateExperience(token, editing.id, input) : createExperience(token, input),
+     onSuccess: () => {
+       toast.success(editing ? "Experience updated" : "Experience added");
+       qc.invalidateQueries({ queryKey: ["experiences"] });
+       onOpenChange(false);
+     },
++    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not save"),
++  });
++
++  const draftMutation = useMutation({
++    mutationFn: (prompt: string) =>
++      generateExperienceDescription(token, {
++        prompt,
++        role: form.role || undefined,
++        company: form.company || undefined,
++        startDate: form.startDate || undefined,
++        endDate: form.present ? null : form.endDate || undefined,
++      }),
++    onSuccess: (data) => {
++      if (data.description) {
++        setForm((f) => ({ ...f, description: data.description! }));
++        toast.success("AI draft ready — review before saving");
++      }
++    },
+     onError: (err: { message?: string }) =>
+-      toast.error(err?.message ?? "Could not save"),
++      toast.error(err?.message ?? "Could not generate a description"),
+   });
+ 
+   function onSubmit(e: React.FormEvent) {
+@@ -441,9 +428,7 @@ function ExperiencePanel({
+               <Input
+                 type="month"
+                 value={form.startDate}
+-                onChange={(e) =>
+-                  setForm({ ...form, startDate: e.target.value })
+-                }
++                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+               />
+             </FieldRow>
+             <FieldRow label="End date">
+@@ -475,13 +460,18 @@ function ExperiencePanel({
+             />
+           </div>
+ 
++          <AIDraftBox
++            label="Draft description with AI"
++            placeholder="e.g. Focus on the migration to microservices and the team I led…"
++            isGenerating={draftMutation.isPending}
++            onGenerate={(prompt) => draftMutation.mutate(prompt)}
++          />
++
+           <FieldRow label="Description">
+             <Textarea
+               rows={5}
+               value={form.description}
+-              onChange={(e) =>
+-                setForm({ ...form, description: e.target.value })
+-              }
++              onChange={(e) => setForm({ ...form, description: e.target.value })}
+               placeholder="What you owned, what you shipped, what changed because of it."
+             />
+           </FieldRow>
+@@ -497,11 +487,7 @@ function ExperiencePanel({
+             Cancel
+           </Button>
+           <Button onClick={onSubmit} disabled={mutation.isPending}>
+-            {mutation.isPending
+-              ? "Saving…"
+-              : editing
+-                ? "Save changes"
+-                : "Add experience"}
++            {mutation.isPending ? "Saving…" : editing ? "Save changes" : "Add experience"}
+           </Button>
+         </SheetFooter>
+       </SheetContent>
+@@ -574,8 +560,7 @@ function SkillsSection() {
+       setUseCustom(false);
+       qc.invalidateQueries({ queryKey: ["skills"] });
+     },
+-    onError: (err: { message?: string }) =>
+-      toast.error(err?.message ?? "Could not add skill"),
++    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not add skill"),
+   });
+ 
+   const removeMutation = useMutation({
+@@ -583,8 +568,7 @@ function SkillsSection() {
+     onSuccess: () => {
+       qc.invalidateQueries({ queryKey: ["skills"] });
+     },
+-    onError: (err: { message?: string }) =>
+-      toast.error(err?.message ?? "Could not remove"),
++    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not remove"),
+   });
+ 
+   function submit(e: React.FormEvent) {
+diff --git a/src/routes/dashboard.projects.$id.tsx b/src/routes/dashboard.projects.$id.tsx
+index fe180d8..168a4ca 100644
+--- a/src/routes/dashboard.projects.$id.tsx
++++ b/src/routes/dashboard.projects.$id.tsx
+@@ -1,25 +1,9 @@
+ import React, { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+-import {
+-  createFileRoute,
+-  useNavigate,
+-  useRouter,
+-  Link,
+-} from "@tanstack/react-router";
++import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
+ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+ import { toast } from "sonner";
+ import { z } from "zod";
+-import {
+-  ArrowLeft,
+-  Sparkles,
+-  Trash2,
+-  ExternalLink,
+-  Github,
+-  X,
+-  Loader2,
+-  Edit,
+-  Eye,
+-  Upload,
+-} from "lucide-react";
++import { ArrowLeft, Trash2, ExternalLink, Github, X, Edit, Eye, Upload } from "lucide-react";
+ 
+ import { Button } from "@/components/ui/button";
+ import { Input } from "@/components/ui/input";
+@@ -46,6 +30,7 @@ import {
+   AlertDialogTitle,
+ } from "@/components/ui/alert-dialog";
+ import { cn } from "@/lib/utils";
++import { AIDraftBox } from "@/components/dashboard/AIDraftBox";
+ 
+ import { useAuth } from "@/lib/auth";
+ import {
+@@ -58,15 +43,7 @@ import {
+   type Project,
+ } from "@/lib/projects";
+ 
+-const CATEGORIES = [
+-  "AI / ML",
+-  "Backend",
+-  "Data",
+-  "Infrastructure",
+-  "Web",
+-  "Mobile",
+-  "Other",
+-];
++const CATEGORIES = ["AI / ML", "Backend", "Data", "Infrastructure", "Web", "Mobile", "Other"];
+ 
+ const schema = z.object({
+   title: z.string().trim().min(2, "Title is required").max(120),
+@@ -166,24 +143,21 @@ function ProjectDetailPage() {
+       qc.invalidateQueries({ queryKey: ["projects"] });
+       setIsEditing(false);
+     },
+-    onError: (err: { message?: string }) =>
+-      toast.error(err?.message ?? "Could not save"),
++    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not save"),
+   });
+ 
+   const publishMutation = useMutation({
+-    mutationFn: (published: boolean) =>
+-      updateProject(token, id, { published }),
++    mutationFn: (published: boolean) => updateProject(token, id, { published }),
+     onSuccess: (data, published) => {
+       toast.success(published ? "Project published" : "Moved to draft");
+       qc.setQueryData(["projects", id], data);
+       qc.invalidateQueries({ queryKey: ["projects"] });
+     },
+-    onError: (err: { message?: string }) =>
+-      toast.error(err?.message ?? "Could not update status"),
++    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not update status"),
+   });
+ 
+   const summaryMutation = useMutation({
+-    mutationFn: () => generateProjectSummary(token, id),
++    mutationFn: (prompt: string) => generateProjectSummary(token, id, prompt),
+     onSuccess: (data) => {
+       setForm((f) =>
+         f
+@@ -210,8 +184,7 @@ function ProjectDetailPage() {
+       qc.invalidateQueries({ queryKey: ["projects"] });
+       navigate({ to: "/dashboard/projects" });
+     },
+-    onError: (err: { message?: string }) =>
+-      toast.error(err?.message ?? "Could not delete"),
++    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not delete"),
+   });
+ 
+   function handleTogglePublish(v: boolean) {
+@@ -222,13 +195,13 @@ function ProjectDetailPage() {
+   function addChip(kind: "tech" | "tag") {
+     if (!form) return;
+     const raw = kind === "tech" ? techInput : tagInput;
+-    const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
++    const parts = raw
++      .split(",")
++      .map((s) => s.trim())
++      .filter(Boolean);
+     if (!parts.length) return;
+     if (kind === "tech") {
+-      upd(
+-        "technologies",
+-        Array.from(new Set([...form.technologies, ...parts])),
+-      );
++      upd("technologies", Array.from(new Set([...form.technologies, ...parts])));
+       setTechInput("");
+     } else {
+       upd("tags", Array.from(new Set([...form.tags, ...parts])));
+@@ -303,11 +276,7 @@ function ProjectDetailPage() {
+     return (
+       <div className="rounded-2xl border border-border bg-card p-12 text-center">
+         <p className="text-sm text-muted-foreground">Couldn't load this project.</p>
+-        <Button
+-          variant="outline"
+-          className="mt-4"
+-          onClick={() => router.invalidate()}
+-        >
++        <Button variant="outline" className="mt-4" onClick={() => router.invalidate()}>
+           Try again
+         </Button>
+       </div>
+@@ -329,7 +298,9 @@ function ProjectDetailPage() {
+             {form.title || "Untitled project"}
+           </h1>
+           <p className="mt-1 text-sm text-muted-foreground">
+-            {isEditing ? "Edit your project details." : "View project details. Click Edit to make changes."}
++            {isEditing
++              ? "Edit your project details."
++              : "View project details. Click Edit to make changes."}
+           </p>
+         </div>
+         <div className="flex items-center gap-3">
+@@ -349,20 +320,12 @@ function ProjectDetailPage() {
+             />
+           </div>
+           {!isEditing ? (
+-            <Button
+-              variant="default"
+-              onClick={() => setIsEditing(true)}
+-              className="gap-1.5"
+-            >
++            <Button variant="default" onClick={() => setIsEditing(true)} className="gap-1.5">
+               <Edit className="h-4 w-4" />
+               Edit
+             </Button>
+           ) : (
+-            <Button
+-              variant="outline"
+-              onClick={() => setIsEditing(false)}
+-              className="gap-1.5"
+-            >
++            <Button variant="outline" onClick={() => setIsEditing(false)} className="gap-1.5">
+               <X className="h-4 w-4" />
+               Cancel
+             </Button>
+@@ -379,23 +342,15 @@ function ProjectDetailPage() {
+             >
+               <div className="flex flex-wrap items-center justify-between gap-2">
+                 <h2 className="text-lg font-semibold">Project details</h2>
+-                <Button
+-                  type="button"
+-                  variant="outline"
+-                  size="sm"
+-                  onClick={() => summaryMutation.mutate()}
+-                  disabled={summaryMutation.isPending}
+-                  className="gap-1.5"
+-                >
+-                  {summaryMutation.isPending ? (
+-                    <Loader2 className="h-4 w-4 animate-spin" />
+-                  ) : (
+-                    <Sparkles className="h-4 w-4" />
+-                  )}
+-                  Generate AI summary
+-                </Button>
+               </div>
+ 
++              <AIDraftBox
++                label="Draft project details with AI"
++                placeholder="e.g. Emphasize the RAG pipeline and the latency win over the previous version…"
++                isGenerating={summaryMutation.isPending}
++                onGenerate={(prompt) => summaryMutation.mutate(prompt)}
++              />
++
+               <div className="grid gap-4 sm:grid-cols-2">
+                 <Field label="Title" error={errors.title}>
+                   <Input
+@@ -417,9 +372,7 @@ function ProjectDetailPage() {
+                   <Input
+                     value={form.slug}
+                     onChange={(e) =>
+-                      setForm((f) =>
+-                        f ? { ...f, slug: e.target.value, slugTouched: true } : f,
+-                      )
++                      setForm((f) => (f ? { ...f, slug: e.target.value, slugTouched: true } : f))
+                     }
+                     placeholder={autoSlug}
+                   />
+@@ -531,14 +484,9 @@ function ProjectDetailPage() {
+               <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/40 px-4 py-3">
+                 <div>
+                   <p className="text-sm font-medium">Featured project</p>
+-                  <p className="text-xs text-muted-foreground">
+-                    Pin to the top of your portfolio.
+-                  </p>
++                  <p className="text-xs text-muted-foreground">Pin to the top of your portfolio.</p>
+                 </div>
+-                <Switch
+-                  checked={form.featured}
+-                  onCheckedChange={(v) => upd("featured", v)}
+-                />
++                <Switch checked={form.featured} onCheckedChange={(v) => upd("featured", v)} />
+               </div>
+ 
+               <Field label="Screenshots">
+@@ -576,11 +524,7 @@ function ProjectDetailPage() {
+                         key={s.url}
+                         className="group relative aspect-video overflow-hidden rounded-lg border border-border bg-muted"
+                       >
+-                        <img
+-                          src={s.url}
+-                          alt={s.name}
+-                          className="h-full w-full object-cover"
+-                        />
++                        <img src={s.url} alt={s.name} className="h-full w-full object-cover" />
+                         <button
+                           type="button"
+                           onClick={() =>
+@@ -617,9 +561,7 @@ function ProjectDetailPage() {
+             </form>
+ 
+             <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
+-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+-                Live preview
+-              </p>
++              <p className="text-xs uppercase tracking-wide text-muted-foreground">Live preview</p>
+               <PreviewCard form={form} />
+             </aside>
+           </>
+@@ -644,14 +586,10 @@ function ProjectDetailPage() {
+                   <p className="text-base font-medium">{form.title || "—"}</p>
+                 </Field>
+                 <Field label="Slug">
+-                  <p className="text-base text-muted-foreground font-mono">
+-                    {form.slug || "—"}
+-                  </p>
++                  <p className="text-base text-muted-foreground font-mono">{form.slug || "—"}</p>
+                 </Field>
+                 <Field label="Short description">
+-                  <p className="text-base text-muted-foreground">
+-                    {form.shortDescription || "—"}
+-                  </p>
++                  <p className="text-base text-muted-foreground">{form.shortDescription || "—"}</p>
+                 </Field>
+                 <div className="grid gap-4 sm:grid-cols-2">
+                   <Field label="Problem">
+@@ -725,9 +663,7 @@ function ProjectDetailPage() {
+ 
+                 <div className="grid gap-4 sm:grid-cols-2">
+                   <Field label="Category">
+-                    <p className="text-base text-muted-foreground">
+-                      {form.category || "—"}
+-                    </p>
++                    <p className="text-base text-muted-foreground">{form.category || "—"}</p>
+                   </Field>
+                   <Field label="Tags">
+                     {form.tags.length > 0 ? (
+@@ -751,10 +687,7 @@ function ProjectDetailPage() {
+                       {form.featured ? "Pinned at the top of your portfolio." : "Not pinned."}
+                     </p>
+                   </div>
+-                  <Switch
+-                    checked={form.featured}
+-                    disabled
+-                  />
++                  <Switch checked={form.featured} disabled />
+                 </div>
+ 
+                 <Field label="Screenshots">
+@@ -765,11 +698,7 @@ function ProjectDetailPage() {
+                           key={s.url}
+                           className="group relative aspect-video overflow-hidden rounded-lg border border-border bg-muted"
+                         >
+-                          <img
+-                            src={s.url}
+-                            alt={s.name}
+-                            className="h-full w-full object-cover"
+-                          />
++                          <img src={s.url} alt={s.name} className="h-full w-full object-cover" />
+                         </div>
+                       ))}
+                     </div>
+@@ -781,9 +710,7 @@ function ProjectDetailPage() {
+             </div>
+ 
+             <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
+-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+-                Preview
+-              </p>
++              <p className="text-xs uppercase tracking-wide text-muted-foreground">Preview</p>
+               <PreviewCard form={form} />
+             </aside>
+           </>
+@@ -919,4 +846,4 @@ function ChipInput({
+       />
+     </div>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/src/routes/p.$username.blog.$slug.tsx b/src/routes/p.$username.blog.$slug.tsx
+index 7cfb334..833d584 100644
+--- a/src/routes/p.$username.blog.$slug.tsx
++++ b/src/routes/p.$username.blog.$slug.tsx
+@@ -75,16 +75,16 @@ function PublicBlogPost() {
+                 </div>
+               ) : null}
+             </header>
+-            {q.data.coverImageUrl ? (
++            {q.data.coverImage ? (
+               <img
+-                src={q.data.coverImageUrl}
++                src={q.data.coverImage}
+                 alt={q.data.title}
+                 className="mt-8 w-full rounded-2xl border border-border object-cover"
+               />
+             ) : null}
+             <div
+               className="prose prose-neutral mt-8 max-w-none text-foreground [&_a]:text-accent"
+-              dangerouslySetInnerHTML={{ __html: renderMarkdown(q.data.content) }}
++              dangerouslySetInnerHTML={{ __html: renderMarkdown(q.data.content ?? "") }}
+             />
+           </>
+         ) : null}
+diff --git a/src/routes/p.$username.blog.tsx b/src/routes/p.$username.blog.tsx
+index 9192745..5cde310 100644
+--- a/src/routes/p.$username.blog.tsx
++++ b/src/routes/p.$username.blog.tsx
+@@ -83,9 +83,9 @@ function PublicBlogList() {
+                 params={{ username, slug: post.slug }}
+                 className="group flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-soft transition-shadow hover:shadow-elevated sm:flex-row sm:items-center sm:p-6"
+               >
+-                {post.coverImageUrl ? (
++                {post.coverImage ? (
+                   <img
+-                    src={post.coverImageUrl}
++                    src={post.coverImage}
+                     alt={post.title}
+                     className="h-32 w-full shrink-0 rounded-xl object-cover sm:h-24 sm:w-40"
+                   />
+diff --git a/src/routes/p.$username.tsx b/src/routes/p.$username.tsx
+index 09f74b3..7cc8f02 100644
+--- a/src/routes/p.$username.tsx
++++ b/src/routes/p.$username.tsx
+@@ -577,9 +577,9 @@ function BlogCard({ post, username }: { post: BlogPost; username: string }) {
+       params={{ username, slug: post.slug }}
+       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-shadow hover:shadow-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+     >
+-      {post.coverImageUrl ? (
++      {post.coverImage ? (
+         <div className="aspect-[16/9] overflow-hidden bg-muted">
+-          <img src={post.coverImageUrl} alt={post.title} className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
++          <img src={post.coverImage} alt={post.title} className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
+         </div>
+       ) : (
+         <div aria-hidden="true" className="aspect-[16/9] bg-gradient-to-br from-primary/10 to-accent/10" />

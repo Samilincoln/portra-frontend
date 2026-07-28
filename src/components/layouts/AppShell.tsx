@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/lib/auth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const nav: Array<{
   to:
@@ -55,13 +56,7 @@ function initials(name?: string, email?: string) {
   return chars.toUpperCase();
 }
 
-function NavList({
-  pathname,
-  onNavigate,
-}: {
-  pathname: string;
-  onNavigate?: () => void;
-}) {
+function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   return (
     <nav className="flex-1 space-y-1 px-3 py-4">
       {nav.map((item) => {
@@ -146,7 +141,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Sheet>
 
           <div className="relative hidden max-w-md flex-1 sm:block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
             <label htmlFor="topbar-search" className="sr-only">
               Search projects and posts
             </label>
@@ -158,6 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             />
           </div>
           <div className="flex-1 sm:flex-none" />
+          <ThemeToggle />
           <Button variant="ghost" size="icon" aria-label="Notifications">
             <Bell className="h-4 w-4" />
           </Button>
@@ -186,7 +185,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="text-destructive focus:text-destructive"
+              >
                 <LogOut className="h-4 w-4" />
                 Log out
               </DropdownMenuItem>

@@ -36,14 +36,10 @@ function authHeaders(token: string | null): HeadersInit {
 
 async function handle<T>(res: Response): Promise<T> {
   const ct = res.headers.get("content-type") ?? "";
-  const data = ct.includes("application/json")
-    ? await res.json().catch(() => ({}))
-    : {};
+  const data = ct.includes("application/json") ? await res.json().catch(() => ({})) : {};
   if (!res.ok) {
     throw {
-      message:
-        (data as { message?: string }).message ??
-        `Request failed (${res.status})`,
+      message: (data as { message?: string }).message ?? `Request failed (${res.status})`,
       fields: (data as { fields?: Record<string, string> }).fields,
     } satisfies AuthApiError;
   }
@@ -52,10 +48,11 @@ async function handle<T>(res: Response): Promise<T> {
 
 export async function listBlogs(
   token: string | null,
-  params?: { published_only?: boolean; skip?: number; limit?: number }
+  params?: { published_only?: boolean; skip?: number; limit?: number },
 ): Promise<BlogPost[]> {
   const search = new URLSearchParams();
-  if (params?.published_only !== undefined) search.set("published_only", String(params.published_only));
+  if (params?.published_only !== undefined)
+    search.set("published_only", String(params.published_only));
   if (params?.skip !== undefined) search.set("skip", String(params.skip));
   if (params?.limit !== undefined) search.set("limit", String(params.limit));
 
@@ -66,20 +63,14 @@ export async function listBlogs(
   return Array.isArray(data) ? data : (data.posts ?? []);
 }
 
-export async function getBlog(
-  token: string | null,
-  id: string,
-): Promise<BlogPost> {
+export async function getBlog(token: string | null, id: string): Promise<BlogPost> {
   const res = await fetch(`${API_BASE_URL}/api/v1/blog/${id}`, {
     headers: authHeaders(token),
   });
   return handle<BlogPost>(res);
 }
 
-export async function createBlog(
-  token: string | null,
-  input: BlogInput,
-): Promise<BlogPost> {
+export async function createBlog(token: string | null, input: BlogInput): Promise<BlogPost> {
   const res = await fetch(`${API_BASE_URL}/api/v1/blog`, {
     method: "POST",
     headers: authHeaders(token),
@@ -101,10 +92,7 @@ export async function updateBlog(
   return handle<BlogPost>(res);
 }
 
-export async function deleteBlog(
-  token: string | null,
-  id: string,
-): Promise<void> {
+export async function deleteBlog(token: string | null, id: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/v1/blog/${id}`, {
     method: "DELETE",
     headers: authHeaders(token),
@@ -113,16 +101,30 @@ export async function deleteBlog(
 }
 
 /**
+ * Ask the backend to draft (or refine) a blog post from a topic/prompt.
+ * Requires a matching `POST /api/v1/blog/generate` endpoint — pass the post
+ * id when refining an existing draft so the backend has the current content
+ * as context.
+ */
+export async function generateBlogDraft(
+  token: string | null,
+  input: { prompt: string; title?: string; existingContent?: string; id?: string },
+): Promise<{ title?: string; content?: string; excerpt?: string; tags?: string[] }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/blog/generate`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(input),
+  });
+  return handle(res);
+}
+
+/**
  * Tiny, dependency-free markdown → HTML renderer.
  * Supports: headings (# .. ###), bold **x**, italic *x*, inline `code`,
  * links [t](u), code fences ```, unordered lists, blockquotes, paragraphs.
  */
 export function renderMarkdown(md: string): string {
-  const esc = (s: string) =>
-    s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
   const lines = md.replace(/\r\n/g, "\n").split("\n");
   const out: string[] = [];
@@ -150,7 +152,10 @@ export function renderMarkdown(md: string): string {
 
   const inline = (s: string) => {
     let x = esc(s);
-    x = x.replace(/`([^`]+)`/g, "<code class='rounded bg-muted px-1 py-0.5 text-[0.85em]'>$1</code>");
+    x = x.replace(
+      /`([^`]+)`/g,
+      "<code class='rounded bg-muted px-1 py-0.5 text-[0.85em]'>$1</code>",
+    );
     x = x.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
     x = x.replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
     x = x.replace(

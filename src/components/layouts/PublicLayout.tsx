@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Sparkles } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function PublicLayout({ children }: { children: ReactNode }) {
   return (
@@ -13,7 +14,8 @@ export function PublicLayout({ children }: { children: ReactNode }) {
             </div>
             <span className="text-lg font-semibold tracking-tight">Portra</span>
           </Link>
-          <nav className="flex items-center gap-6 text-sm font-medium text-muted-foreground">
+          <nav className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
+            <ThemeToggle />
             <Link to="/login" className="hover:text-foreground">
               Log in
             </Link>
@@ -31,8 +33,12 @@ export function PublicLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-8 text-sm text-muted-foreground md:flex-row">
           <p>© {new Date().getFullYear()} Portra. Portfolios for engineers.</p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-foreground">Privacy</a>
-            <a href="#" className="hover:text-foreground">Terms</a>
+            <a href="#" className="hover:text-foreground">
+              Privacy
+            </a>
+            <a href="#" className="hover:text-foreground">
+              Terms
+            </a>
           </div>
         </div>
       </footer>

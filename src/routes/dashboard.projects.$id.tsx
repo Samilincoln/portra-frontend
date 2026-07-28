@@ -1,25 +1,9 @@
 import React, { useEffect, useMemo, useState, type KeyboardEvent } from "react";
-import {
-  createFileRoute,
-  useNavigate,
-  useRouter,
-  Link,
-} from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
-import {
-  ArrowLeft,
-  Sparkles,
-  Trash2,
-  ExternalLink,
-  Github,
-  X,
-  Loader2,
-  Edit,
-  Eye,
-  Upload,
-} from "lucide-react";
+import { ArrowLeft, Trash2, ExternalLink, Github, X, Edit, Eye, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { AIDraftBox } from "@/components/dashboard/AIDraftBox";
 
 import { useAuth } from "@/lib/auth";
 import {
@@ -58,15 +43,7 @@ import {
   type Project,
 } from "@/lib/projects";
 
-const CATEGORIES = [
-  "AI / ML",
-  "Backend",
-  "Data",
-  "Infrastructure",
-  "Web",
-  "Mobile",
-  "Other",
-];
+const CATEGORIES = ["AI / ML", "Backend", "Data", "Infrastructure", "Web", "Mobile", "Other"];
 
 const schema = z.object({
   title: z.string().trim().min(2, "Title is required").max(120),
@@ -166,24 +143,21 @@ function ProjectDetailPage() {
       qc.invalidateQueries({ queryKey: ["projects"] });
       setIsEditing(false);
     },
-    onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not save"),
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not save"),
   });
 
   const publishMutation = useMutation({
-    mutationFn: (published: boolean) =>
-      updateProject(token, id, { published }),
+    mutationFn: (published: boolean) => updateProject(token, id, { published }),
     onSuccess: (data, published) => {
       toast.success(published ? "Project published" : "Moved to draft");
       qc.setQueryData(["projects", id], data);
       qc.invalidateQueries({ queryKey: ["projects"] });
     },
-    onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not update status"),
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not update status"),
   });
 
   const summaryMutation = useMutation({
-    mutationFn: () => generateProjectSummary(token, id),
+    mutationFn: (prompt: string) => generateProjectSummary(token, id, prompt),
     onSuccess: (data) => {
       setForm((f) =>
         f
@@ -210,8 +184,7 @@ function ProjectDetailPage() {
       qc.invalidateQueries({ queryKey: ["projects"] });
       navigate({ to: "/dashboard/projects" });
     },
-    onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not delete"),
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not delete"),
   });
 
   function handleTogglePublish(v: boolean) {
@@ -222,13 +195,13 @@ function ProjectDetailPage() {
   function addChip(kind: "tech" | "tag") {
     if (!form) return;
     const raw = kind === "tech" ? techInput : tagInput;
-    const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    const parts = raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (!parts.length) return;
     if (kind === "tech") {
-      upd(
-        "technologies",
-        Array.from(new Set([...form.technologies, ...parts])),
-      );
+      upd("technologies", Array.from(new Set([...form.technologies, ...parts])));
       setTechInput("");
     } else {
       upd("tags", Array.from(new Set([...form.tags, ...parts])));
@@ -303,11 +276,7 @@ function ProjectDetailPage() {
     return (
       <div className="rounded-2xl border border-border bg-card p-12 text-center">
         <p className="text-sm text-muted-foreground">Couldn't load this project.</p>
-        <Button
-          variant="outline"
-          className="mt-4"
-          onClick={() => router.invalidate()}
-        >
+        <Button variant="outline" className="mt-4" onClick={() => router.invalidate()}>
           Try again
         </Button>
       </div>
@@ -329,7 +298,9 @@ function ProjectDetailPage() {
             {form.title || "Untitled project"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {isEditing ? "Edit your project details." : "View project details. Click Edit to make changes."}
+            {isEditing
+              ? "Edit your project details."
+              : "View project details. Click Edit to make changes."}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -349,20 +320,12 @@ function ProjectDetailPage() {
             />
           </div>
           {!isEditing ? (
-            <Button
-              variant="default"
-              onClick={() => setIsEditing(true)}
-              className="gap-1.5"
-            >
+            <Button variant="default" onClick={() => setIsEditing(true)} className="gap-1.5">
               <Edit className="h-4 w-4" />
               Edit
             </Button>
           ) : (
-            <Button
-              variant="outline"
-              onClick={() => setIsEditing(false)}
-              className="gap-1.5"
-            >
+            <Button variant="outline" onClick={() => setIsEditing(false)} className="gap-1.5">
               <X className="h-4 w-4" />
               Cancel
             </Button>
@@ -379,22 +342,14 @@ function ProjectDetailPage() {
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold">Project details</h2>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => summaryMutation.mutate()}
-                  disabled={summaryMutation.isPending}
-                  className="gap-1.5"
-                >
-                  {summaryMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
-                  Generate AI summary
-                </Button>
               </div>
+
+              <AIDraftBox
+                label="Draft project details with AI"
+                placeholder="e.g. Emphasize the RAG pipeline and the latency win over the previous version…"
+                isGenerating={summaryMutation.isPending}
+                onGenerate={(prompt) => summaryMutation.mutate(prompt)}
+              />
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Title" error={errors.title}>
@@ -417,9 +372,7 @@ function ProjectDetailPage() {
                   <Input
                     value={form.slug}
                     onChange={(e) =>
-                      setForm((f) =>
-                        f ? { ...f, slug: e.target.value, slugTouched: true } : f,
-                      )
+                      setForm((f) => (f ? { ...f, slug: e.target.value, slugTouched: true } : f))
                     }
                     placeholder={autoSlug}
                   />
@@ -531,14 +484,9 @@ function ProjectDetailPage() {
               <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/40 px-4 py-3">
                 <div>
                   <p className="text-sm font-medium">Featured project</p>
-                  <p className="text-xs text-muted-foreground">
-                    Pin to the top of your portfolio.
-                  </p>
+                  <p className="text-xs text-muted-foreground">Pin to the top of your portfolio.</p>
                 </div>
-                <Switch
-                  checked={form.featured}
-                  onCheckedChange={(v) => upd("featured", v)}
-                />
+                <Switch checked={form.featured} onCheckedChange={(v) => upd("featured", v)} />
               </div>
 
               <Field label="Screenshots">
@@ -576,11 +524,7 @@ function ProjectDetailPage() {
                         key={s.url}
                         className="group relative aspect-video overflow-hidden rounded-lg border border-border bg-muted"
                       >
-                        <img
-                          src={s.url}
-                          alt={s.name}
-                          className="h-full w-full object-cover"
-                        />
+                        <img src={s.url} alt={s.name} className="h-full w-full object-cover" />
                         <button
                           type="button"
                           onClick={() =>
@@ -617,9 +561,7 @@ function ProjectDetailPage() {
             </form>
 
             <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Live preview
-              </p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Live preview</p>
               <PreviewCard form={form} />
             </aside>
           </>
@@ -644,14 +586,10 @@ function ProjectDetailPage() {
                   <p className="text-base font-medium">{form.title || "—"}</p>
                 </Field>
                 <Field label="Slug">
-                  <p className="text-base text-muted-foreground font-mono">
-                    {form.slug || "—"}
-                  </p>
+                  <p className="text-base text-muted-foreground font-mono">{form.slug || "—"}</p>
                 </Field>
                 <Field label="Short description">
-                  <p className="text-base text-muted-foreground">
-                    {form.shortDescription || "—"}
-                  </p>
+                  <p className="text-base text-muted-foreground">{form.shortDescription || "—"}</p>
                 </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Problem">
@@ -725,9 +663,7 @@ function ProjectDetailPage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Category">
-                    <p className="text-base text-muted-foreground">
-                      {form.category || "—"}
-                    </p>
+                    <p className="text-base text-muted-foreground">{form.category || "—"}</p>
                   </Field>
                   <Field label="Tags">
                     {form.tags.length > 0 ? (
@@ -751,10 +687,7 @@ function ProjectDetailPage() {
                       {form.featured ? "Pinned at the top of your portfolio." : "Not pinned."}
                     </p>
                   </div>
-                  <Switch
-                    checked={form.featured}
-                    disabled
-                  />
+                  <Switch checked={form.featured} disabled />
                 </div>
 
                 <Field label="Screenshots">
@@ -765,11 +698,7 @@ function ProjectDetailPage() {
                           key={s.url}
                           className="group relative aspect-video overflow-hidden rounded-lg border border-border bg-muted"
                         >
-                          <img
-                            src={s.url}
-                            alt={s.name}
-                            className="h-full w-full object-cover"
-                          />
+                          <img src={s.url} alt={s.name} className="h-full w-full object-cover" />
                         </div>
                       ))}
                     </div>
@@ -781,9 +710,7 @@ function ProjectDetailPage() {
             </div>
 
             <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Preview
-              </p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Preview</p>
               <PreviewCard form={form} />
             </aside>
           </>

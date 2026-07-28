@@ -75,16 +75,16 @@ function PublicBlogPost() {
                 </div>
               ) : null}
             </header>
-            {q.data.coverImageUrl ? (
+            {q.data.coverImage ? (
               <img
-                src={q.data.coverImageUrl}
+                src={q.data.coverImage}
                 alt={q.data.title}
                 className="mt-8 w-full rounded-2xl border border-border object-cover"
               />
             ) : null}
             <div
               className="prose prose-neutral mt-8 max-w-none text-foreground [&_a]:text-accent"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(q.data.content) }}
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(q.data.content ?? "") }}
             />
           </>
         ) : null}

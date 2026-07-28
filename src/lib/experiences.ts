@@ -27,14 +27,10 @@ function authHeaders(token: string | null): HeadersInit {
 
 async function handle<T>(res: Response): Promise<T> {
   const ct = res.headers.get("content-type") ?? "";
-  const data = ct.includes("application/json")
-    ? await res.json().catch(() => ({}))
-    : {};
+  const data = ct.includes("application/json") ? await res.json().catch(() => ({})) : {};
   if (!res.ok) {
     throw {
-      message:
-        (data as { message?: string }).message ??
-        `Request failed (${res.status})`,
+      message: (data as { message?: string }).message ?? `Request failed (${res.status})`,
       fields: (data as { fields?: Record<string, string> }).fields,
     } satisfies AuthApiError;
   }
@@ -43,7 +39,7 @@ async function handle<T>(res: Response): Promise<T> {
 
 export async function listExperiences(
   token: string | null,
-  params?: { skip?: number; limit?: number }
+  params?: { skip?: number; limit?: number },
 ): Promise<Experience[]> {
   const search = new URLSearchParams();
   if (params?.skip !== undefined) search.set("skip", String(params.skip));
@@ -68,10 +64,7 @@ export async function createExperience(
   return handle<Experience>(res);
 }
 
-export async function getExperience(
-  token: string | null,
-  id: string,
-): Promise<Experience> {
+export async function getExperience(token: string | null, id: string): Promise<Experience> {
   const res = await fetch(`${API_BASE_URL}/api/v1/experiences/${id}`, {
     headers: authHeaders(token),
   });
@@ -91,13 +84,33 @@ export async function updateExperience(
   return handle<Experience>(res);
 }
 
-export async function deleteExperience(
-  token: string | null,
-  id: string,
-): Promise<void> {
+export async function deleteExperience(token: string | null, id: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/v1/experiences/${id}`, {
     method: "DELETE",
     headers: authHeaders(token),
   });
   if (!res.ok && res.status !== 204) await handle(res);
+}
+
+/**
+ * Ask the backend to draft a role description from a short prompt plus
+ * whatever role/company/dates are already filled in. Requires a matching
+ * `POST /api/v1/experiences/generate-description` endpoint.
+ */
+export async function generateExperienceDescription(
+  token: string | null,
+  input: {
+    prompt: string;
+    role?: string;
+    company?: string;
+    startDate?: string;
+    endDate?: string | null;
+  },
+): Promise<{ description?: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/experiences/generate-description`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(input),
+  });
+  return handle(res);
 }
