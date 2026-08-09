@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 
 import { useAuth } from "@/lib/auth";
 import { slugify } from "@/lib/projects";
+import { AiBlogAssistant } from "@/components/dashboard/AiBlogAssistant";
+
 import {
   createBlog,
   renderMarkdown,
@@ -129,6 +131,14 @@ export function BlogEditor({ existing }: Props) {
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <AiBlogAssistant
+            title={title}
+            content={content}
+            onApply={({ title: t, content: c }) => {
+              if (t) setTitle(t);
+              setContent(c);
+            }}
+          />
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-soft">
             <span className="text-xs uppercase tracking-wide text-muted-foreground">
               {published ? "Published" : "Draft"}
@@ -138,6 +148,7 @@ export function BlogEditor({ existing }: Props) {
               onCheckedChange={(v) => setPublished(v)}
             />
           </div>
+
           <Button
             variant="outline"
             onClick={() => save("draft")}

@@ -1,5 +1,5 @@
-import React,  { useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Plus,
@@ -25,14 +25,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -48,7 +40,7 @@ import { AddProjectDialog } from "@/components/dashboard/AddProjectDialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/dashboard/projects")({
+export const Route = createFileRoute("/dashboard/projects/")({
   head: () => ({ meta: [{ title: "Projects — Portra" }] }),
   component: ProjectsPage,
 });
@@ -57,7 +49,6 @@ type StatusFilter = "all" | "published" | "draft";
 
 function ProjectsPage() {
   const { token } = useAuth();
-  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [addOpen, setAddOpen] = useState(false);
@@ -144,104 +135,45 @@ function ProjectsPage() {
         </Select>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card shadow-soft">
-        {query.isLoading ? (
-          <LoadingSkeleton />
-        ) : query.isError ? (
+      {query.isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-64 w-full rounded-2xl" />
+          ))}
+        </div>
+      ) : query.isError ? (
+        <div className="rounded-2xl border border-border bg-card shadow-soft">
           <ErrorState onRetry={() => query.refetch()} />
-        ) : filtered.length === 0 ? (
-          (query.data?.length ?? 0) === 0 ? (
-            <EmptyState onAdd={() => setAddOpen(true)} />
-          ) : (
-            <NoMatchState />
-          )
-        ) : (
-          <ProjectsTable
-            projects={filtered}
-            username={username}
-            onDelete={deleteMutation.mutate}
-            onNavigate={(id) => navigate({ to: "/dashboard/projects/$id", params: { id } })}
-          />
-        )}
-      </div>
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <NewProjectCard onAdd={() => setAddOpen(true)} />
+            {filtered.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                username={username}
+                onDelete={deleteMutation.mutate}
+              />
+            ))}
+          </div>
+          {(query.data?.length ?? 0) === 0 ? (
+            <div className="mt-6 rounded-2xl border border-border bg-card shadow-soft">
+              <EmptyState onAdd={() => setAddOpen(true)} />
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              No projects match your filters.
+            </p>
+          ) : null}
+        </>
+      )}
 
       <AddProjectDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
-
-const ProjectRow = React.memo(function ProjectRow({
-  project,
-  username,
-  onDelete,
-  onNavigate,
-}: {
-  project: Project;
-  username: string;
-  onDelete: (id: string) => void;
-  onNavigate: (id: string) => void;
-}) {
-  return (
-    <TableRow
-      key={project.id}
-      style={{ cursor: "pointer" }}
-      onClick={() => onNavigate(project.id)}
-    >
-      <TableCell>
-        <Link
-          to="/dashboard/projects/$id"
-          params={{ id: project.id }}
-          className="flex items-center gap-3 hover:bg-secondary/50 rounded-md p-1.5 transition-colors"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex h-11 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
-            {project.thumbnailUrl ? (
-              <img src={project.thumbnailUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <ImageIcon className="h-4 w-4 text-muted-foreground" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate font-medium hover:text-accent transition-colors">{project.title}</p>
-            {project.shortDescription ? (
-              <p className="truncate text-xs text-muted-foreground">{project.shortDescription}</p>
-            ) : null}
-          </div>
-        </Link>
-      </TableCell>
-      <TableCell>
-        <span className="text-sm text-muted-foreground">{project.category ?? "—"}</span>
-      </TableCell>
-            <TableCell>
-              <Badge
-                variant={project.status === "published" ? "default" : "secondary"}
-                className={cn(
-                  project.status === "published" &&
-                    "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300",
-                )}
-              >
-                {project.status === "published" ? "Published" : "Draft"}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-center">
-              <button
-                type="button"
-                aria-label={project.featured ? "Unfeature project" : "Feature project"}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Star
-                  className={cn("h-4 w-4", project.featured && "fill-amber-400 text-amber-400")}
-                />
-              </button>
-            </TableCell>
-            <TableCell>
-              <ProjectActionsMenu project={project} username={username} onDelete={onDelete} />
-            </TableCell>
-</TableRow>
-        );
-      }
-    );
 
 function ProjectActionsMenu({
   project,
@@ -300,59 +232,93 @@ function ProjectActionsMenu({
   );
 }
 
-const ProjectsTable = React.memo(function ProjectsTable({
-  projects,
+function NewProjectCard({ onAdd }: { onAdd: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      className="flex min-h-64 flex-col justify-center gap-2 rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center transition-colors hover:border-accent hover:bg-accent/5"
+    >
+      <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-accent/10 text-accent">
+        <Plus className="h-5 w-5" />
+      </span>
+      <span className="text-base font-medium">Add project</span>
+      <span className="text-xs text-muted-foreground">
+        Publish a new case study with problem, solution and results.
+      </span>
+    </button>
+  );
+}
+
+function ProjectCard({
+  project,
   username,
   onDelete,
-  onNavigate,
 }: {
-  projects: Project[];
+  project: Project;
   username: string;
   onDelete: (id: string) => void;
-  onNavigate: (id: string) => void;
 }) {
+  const published = project.status === "published";
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[380px]">Project</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="w-16 text-center">Featured</TableHead>
-          <TableHead className="w-12" />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {projects.map((project) => (
-          <ProjectRow
-            key={project.id}
+    <article className="flex min-h-64 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-shadow hover:shadow-elevated">
+      <div className="relative h-32 w-full bg-muted">
+        {project.thumbnailUrl ? (
+          <img
+            src={project.thumbnailUrl}
+            alt={project.title}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="grid h-full w-full place-items-center text-muted-foreground">
+            <ImageIcon className="h-5 w-5" />
+          </div>
+        )}
+        {project.featured ? (
+          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-background/85 px-2 py-1 text-xs font-medium backdrop-blur">
+            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+            Featured
+          </span>
+        ) : null}
+      </div>
+      <div className="flex flex-1 flex-col p-5">
+        <div className="flex items-center justify-between gap-2">
+          <Badge
+            variant={published ? "default" : "secondary"}
+            className={cn(
+              published &&
+                "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300",
+            )}
+          >
+            {published ? "Published" : "Draft"}
+          </Badge>
+          <span className="truncate text-xs text-muted-foreground">
+            {project.category ?? "—"}
+          </span>
+        </div>
+        <h3 className="mt-3 line-clamp-2 text-base font-semibold tracking-tight">
+          {project.title}
+        </h3>
+        {project.shortDescription ? (
+          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+            {project.shortDescription}
+          </p>
+        ) : null}
+        <div className="mt-auto flex items-center justify-between gap-2 pt-4">
+          <Button asChild size="sm" variant={published ? "outline" : "default"} className="gap-1.5">
+            <Link to="/dashboard/projects/$id" params={{ id: project.id }}>
+              <Pencil className="h-3.5 w-3.5" />
+              {published ? "Edit" : "Continue editing"}
+            </Link>
+          </Button>
+          <ProjectActionsMenu
             project={project}
             username={username}
             onDelete={onDelete}
-            onNavigate={onNavigate}
           />
-        ))}
-      </TableBody>
-    </Table>
-  );
-});
-
-function LoadingSkeleton() {
-  return (
-    <div className="divide-y divide-border">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 px-6 py-4">
-          <Skeleton className="h-11 w-16 rounded-md" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-3 w-2/3" />
-          </div>
-          <Skeleton className="h-6 w-20 rounded-full" />
-          <Skeleton className="h-6 w-16 rounded-full" />
-          <Skeleton className="h-8 w-8 rounded-md" />
         </div>
-      ))}
-    </div>
+      </div>
+    </article>
   );
 }
 
