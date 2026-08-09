@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { listBlogs, type BlogPost } from "@/lib/blog";
 
-export const Route = createFileRoute("/dashboard/blog")({
+export const Route = createFileRoute("/dashboard/blog/")({
   head: () => ({
     meta: [
       { title: "Blog posts & drafts — Portra" },

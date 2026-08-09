@@ -18,9 +18,9 @@ import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as PUsernameRouteImport } from './routes/p.$username'
 import { Route as DashboardTestimonialsRouteImport } from './routes/dashboard.testimonials'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
-import { Route as DashboardProjectsRouteImport } from './routes/dashboard.projects'
 import { Route as DashboardExperienceRouteImport } from './routes/dashboard.experience'
-import { Route as DashboardBlogRouteImport } from './routes/dashboard.blog'
+import { Route as DashboardProjectsIndexRouteImport } from './routes/dashboard.projects.index'
+import { Route as DashboardBlogIndexRouteImport } from './routes/dashboard.blog.index'
 import { Route as PUsernameBlogRouteImport } from './routes/p.$username.blog'
 import { Route as DashboardProjectsIdRouteImport } from './routes/dashboard.projects.$id'
 import { Route as DashboardBlogNewRouteImport } from './routes/dashboard.blog.new'
@@ -73,19 +73,19 @@ const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardProjectsRoute = DashboardProjectsRouteImport.update({
-  id: '/projects',
-  path: '/projects',
-  getParentRoute: () => DashboardRoute,
-} as any)
 const DashboardExperienceRoute = DashboardExperienceRouteImport.update({
   id: '/experience',
   path: '/experience',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardBlogRoute = DashboardBlogRouteImport.update({
-  id: '/blog',
-  path: '/blog',
+const DashboardProjectsIndexRoute = DashboardProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardBlogIndexRoute = DashboardBlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
   getParentRoute: () => DashboardRoute,
 } as any)
 const PUsernameBlogRoute = PUsernameBlogRouteImport.update({
@@ -94,14 +94,14 @@ const PUsernameBlogRoute = PUsernameBlogRouteImport.update({
   getParentRoute: () => PUsernameRoute,
 } as any)
 const DashboardProjectsIdRoute = DashboardProjectsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => DashboardProjectsRoute,
+  id: '/projects/$id',
+  path: '/projects/$id',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardBlogNewRoute = DashboardBlogNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => DashboardBlogRoute,
+  id: '/blog/new',
+  path: '/blog/new',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const PUsernameProjectsSlugRoute = PUsernameProjectsSlugRouteImport.update({
   id: '/projects/$slug',
@@ -114,9 +114,9 @@ const PUsernameBlogSlugRoute = PUsernameBlogSlugRouteImport.update({
   getParentRoute: () => PUsernameBlogRoute,
 } as any)
 const DashboardBlogIdEditRoute = DashboardBlogIdEditRouteImport.update({
-  id: '/$id/edit',
-  path: '/$id/edit',
-  getParentRoute: () => DashboardBlogRoute,
+  id: '/blog/$id/edit',
+  path: '/blog/$id/edit',
+  getParentRoute: () => DashboardRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -125,9 +125,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/dashboard/blog': typeof DashboardBlogRouteWithChildren
   '/dashboard/experience': typeof DashboardExperienceRoute
-  '/dashboard/projects': typeof DashboardProjectsRouteWithChildren
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
   '/p/$username': typeof PUsernameRouteWithChildren
@@ -135,6 +133,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
   '/p/$username/blog': typeof PUsernameBlogRouteWithChildren
+  '/dashboard/blog/': typeof DashboardBlogIndexRoute
+  '/dashboard/projects/': typeof DashboardProjectsIndexRoute
   '/dashboard/blog/$id/edit': typeof DashboardBlogIdEditRoute
   '/p/$username/blog/$slug': typeof PUsernameBlogSlugRoute
   '/p/$username/projects/$slug': typeof PUsernameProjectsSlugRoute
@@ -144,9 +144,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/dashboard/blog': typeof DashboardBlogRouteWithChildren
   '/dashboard/experience': typeof DashboardExperienceRoute
-  '/dashboard/projects': typeof DashboardProjectsRouteWithChildren
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
   '/p/$username': typeof PUsernameRouteWithChildren
@@ -154,6 +152,8 @@ export interface FileRoutesByTo {
   '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
   '/p/$username/blog': typeof PUsernameBlogRouteWithChildren
+  '/dashboard/blog': typeof DashboardBlogIndexRoute
+  '/dashboard/projects': typeof DashboardProjectsIndexRoute
   '/dashboard/blog/$id/edit': typeof DashboardBlogIdEditRoute
   '/p/$username/blog/$slug': typeof PUsernameBlogSlugRoute
   '/p/$username/projects/$slug': typeof PUsernameProjectsSlugRoute
@@ -165,9 +165,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
-  '/dashboard/blog': typeof DashboardBlogRouteWithChildren
   '/dashboard/experience': typeof DashboardExperienceRoute
-  '/dashboard/projects': typeof DashboardProjectsRouteWithChildren
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
   '/p/$username': typeof PUsernameRouteWithChildren
@@ -175,6 +173,8 @@ export interface FileRoutesById {
   '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
   '/p/$username/blog': typeof PUsernameBlogRouteWithChildren
+  '/dashboard/blog/': typeof DashboardBlogIndexRoute
+  '/dashboard/projects/': typeof DashboardProjectsIndexRoute
   '/dashboard/blog/$id/edit': typeof DashboardBlogIdEditRoute
   '/p/$username/blog/$slug': typeof PUsernameBlogSlugRoute
   '/p/$username/projects/$slug': typeof PUsernameProjectsSlugRoute
@@ -187,9 +187,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/signup'
-    | '/dashboard/blog'
     | '/dashboard/experience'
-    | '/dashboard/projects'
     | '/dashboard/settings'
     | '/dashboard/testimonials'
     | '/p/$username'
@@ -197,6 +195,8 @@ export interface FileRouteTypes {
     | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
     | '/p/$username/blog'
+    | '/dashboard/blog/'
+    | '/dashboard/projects/'
     | '/dashboard/blog/$id/edit'
     | '/p/$username/blog/$slug'
     | '/p/$username/projects/$slug'
@@ -206,9 +206,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/signup'
-    | '/dashboard/blog'
     | '/dashboard/experience'
-    | '/dashboard/projects'
     | '/dashboard/settings'
     | '/dashboard/testimonials'
     | '/p/$username'
@@ -216,6 +214,8 @@ export interface FileRouteTypes {
     | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
     | '/p/$username/blog'
+    | '/dashboard/blog'
+    | '/dashboard/projects'
     | '/dashboard/blog/$id/edit'
     | '/p/$username/blog/$slug'
     | '/p/$username/projects/$slug'
@@ -226,9 +226,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/signup'
-    | '/dashboard/blog'
     | '/dashboard/experience'
-    | '/dashboard/projects'
     | '/dashboard/settings'
     | '/dashboard/testimonials'
     | '/p/$username'
@@ -236,6 +234,8 @@ export interface FileRouteTypes {
     | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
     | '/p/$username/blog'
+    | '/dashboard/blog/'
+    | '/dashboard/projects/'
     | '/dashboard/blog/$id/edit'
     | '/p/$username/blog/$slug'
     | '/p/$username/projects/$slug'
@@ -315,13 +315,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/projects': {
-      id: '/dashboard/projects'
-      path: '/projects'
-      fullPath: '/dashboard/projects'
-      preLoaderRoute: typeof DashboardProjectsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
     '/dashboard/experience': {
       id: '/dashboard/experience'
       path: '/experience'
@@ -329,11 +322,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardExperienceRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/blog': {
-      id: '/dashboard/blog'
+    '/dashboard/projects/': {
+      id: '/dashboard/projects/'
+      path: '/projects'
+      fullPath: '/dashboard/projects/'
+      preLoaderRoute: typeof DashboardProjectsIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/blog/': {
+      id: '/dashboard/blog/'
       path: '/blog'
-      fullPath: '/dashboard/blog'
-      preLoaderRoute: typeof DashboardBlogRouteImport
+      fullPath: '/dashboard/blog/'
+      preLoaderRoute: typeof DashboardBlogIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/p/$username/blog': {
@@ -345,17 +345,17 @@ declare module '@tanstack/react-router' {
     }
     '/dashboard/projects/$id': {
       id: '/dashboard/projects/$id'
-      path: '/$id'
+      path: '/projects/$id'
       fullPath: '/dashboard/projects/$id'
       preLoaderRoute: typeof DashboardProjectsIdRouteImport
-      parentRoute: typeof DashboardProjectsRoute
+      parentRoute: typeof DashboardRoute
     }
     '/dashboard/blog/new': {
       id: '/dashboard/blog/new'
-      path: '/new'
+      path: '/blog/new'
       fullPath: '/dashboard/blog/new'
       preLoaderRoute: typeof DashboardBlogNewRouteImport
-      parentRoute: typeof DashboardBlogRoute
+      parentRoute: typeof DashboardRoute
     }
     '/p/$username/projects/$slug': {
       id: '/p/$username/projects/$slug'
@@ -373,55 +373,36 @@ declare module '@tanstack/react-router' {
     }
     '/dashboard/blog/$id/edit': {
       id: '/dashboard/blog/$id/edit'
-      path: '/$id/edit'
+      path: '/blog/$id/edit'
       fullPath: '/dashboard/blog/$id/edit'
       preLoaderRoute: typeof DashboardBlogIdEditRouteImport
-      parentRoute: typeof DashboardBlogRoute
+      parentRoute: typeof DashboardRoute
     }
   }
 }
 
-interface DashboardBlogRouteChildren {
-  DashboardBlogNewRoute: typeof DashboardBlogNewRoute
-  DashboardBlogIdEditRoute: typeof DashboardBlogIdEditRoute
-}
-
-const DashboardBlogRouteChildren: DashboardBlogRouteChildren = {
-  DashboardBlogNewRoute: DashboardBlogNewRoute,
-  DashboardBlogIdEditRoute: DashboardBlogIdEditRoute,
-}
-
-const DashboardBlogRouteWithChildren = DashboardBlogRoute._addFileChildren(
-  DashboardBlogRouteChildren,
-)
-
-interface DashboardProjectsRouteChildren {
-  DashboardProjectsIdRoute: typeof DashboardProjectsIdRoute
-}
-
-const DashboardProjectsRouteChildren: DashboardProjectsRouteChildren = {
-  DashboardProjectsIdRoute: DashboardProjectsIdRoute,
-}
-
-const DashboardProjectsRouteWithChildren =
-  DashboardProjectsRoute._addFileChildren(DashboardProjectsRouteChildren)
-
 interface DashboardRouteChildren {
-  DashboardBlogRoute: typeof DashboardBlogRouteWithChildren
   DashboardExperienceRoute: typeof DashboardExperienceRoute
-  DashboardProjectsRoute: typeof DashboardProjectsRouteWithChildren
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardTestimonialsRoute: typeof DashboardTestimonialsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardBlogNewRoute: typeof DashboardBlogNewRoute
+  DashboardProjectsIdRoute: typeof DashboardProjectsIdRoute
+  DashboardBlogIndexRoute: typeof DashboardBlogIndexRoute
+  DashboardProjectsIndexRoute: typeof DashboardProjectsIndexRoute
+  DashboardBlogIdEditRoute: typeof DashboardBlogIdEditRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
-  DashboardBlogRoute: DashboardBlogRouteWithChildren,
   DashboardExperienceRoute: DashboardExperienceRoute,
-  DashboardProjectsRoute: DashboardProjectsRouteWithChildren,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardTestimonialsRoute: DashboardTestimonialsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardBlogNewRoute: DashboardBlogNewRoute,
+  DashboardProjectsIdRoute: DashboardProjectsIdRoute,
+  DashboardBlogIndexRoute: DashboardBlogIndexRoute,
+  DashboardProjectsIndexRoute: DashboardProjectsIndexRoute,
+  DashboardBlogIdEditRoute: DashboardBlogIdEditRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

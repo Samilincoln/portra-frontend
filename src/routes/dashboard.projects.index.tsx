@@ -40,7 +40,7 @@ import { AddProjectDialog } from "@/components/dashboard/AddProjectDialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/dashboard/projects")({
+export const Route = createFileRoute("/dashboard/projects/")({
   head: () => ({ meta: [{ title: "Projects — Portra" }] }),
   component: ProjectsPage,
 });
