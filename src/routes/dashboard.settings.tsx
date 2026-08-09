@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Palette, Trash2 } from "lucide-react";
+import { Loader2, Moon, Palette, Sun, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,32 +29,15 @@ import { cn } from "@/lib/utils";
 
 import { useAuth } from "@/lib/auth";
 import { deleteMe, getMe, updateMe, type UserProfile } from "@/lib/users";
+import { PALETTES, useTheme, type PaletteId } from "@/lib/theme";
+import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const Route = createFileRoute("/dashboard/settings")({
   head: () => ({ meta: [{ title: "Settings — Portra" }] }),
   component: SettingsPage,
 });
 
-const THEMES = [
-  {
-    id: "midnight",
-    label: "Midnight",
-    description: "Deep navy with electric blue accents.",
-    colors: ["#1B2A4A", "#3D5AFE", "#F8FAFC"],
-  },
-  {
-    id: "paper",
-    label: "Paper",
-    description: "Clean, editorial white on ink.",
-    colors: ["#F8F7F4", "#1A1A1A", "#B45309"],
-  },
-  {
-    id: "graphite",
-    label: "Graphite",
-    description: "Dark, monospaced-friendly for engineers.",
-    colors: ["#0F1115", "#22C55E", "#F1F5F9"],
-  },
-];
 
 function SettingsPage() {
   const { token, logout } = useAuth();
@@ -144,6 +127,26 @@ function ProfileTab({
   const { token } = useAuth();
   const [form, setForm] = useState<UserProfile>(profile);
   useEffect(() => setForm(profile), [profile]);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Pick an image file");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be under 2MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () =>
+      setForm((f) => ({ ...f, avatarUrl: String(reader.result) }));
+    reader.onerror = () => toast.error("Could not read that image");
+    reader.readAsDataURL(file);
+  }
 
   const mutation = useMutation({
     mutationFn: (input: Partial<UserProfile>) => updateMe(token, input),
@@ -181,11 +184,49 @@ function ProfileTab({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Avatar URL</Label>
+            <Label>Profile picture</Label>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-14 w-14">
+                {form.avatarUrl ? (
+                  <AvatarImage src={form.avatarUrl} alt="Profile picture" />
+                ) : null}
+                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
+                  {(form.name ?? form.email ?? "U").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={onPickFile}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <Upload className="h-4 w-4" /> Upload
+                </Button>
+                {form.avatarUrl ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForm({ ...form, avatarUrl: "" })}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+              </div>
+            </div>
             <Input
               value={form.avatarUrl ?? ""}
               onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })}
-              placeholder="https://…"
+              placeholder="…or paste an image URL"
             />
           </div>
         </div>
@@ -239,8 +280,17 @@ function PortfolioTab({
   onSaved: () => void;
 }) {
   const { token } = useAuth();
+  const { palette, setPalette, mode, setMode } = useTheme();
   const [form, setForm] = useState<UserProfile>(profile);
   useEffect(() => setForm(profile), [profile]);
+
+  // Keep the live theme in sync with the saved profile theme.
+  useEffect(() => {
+    const saved = profile.theme;
+    if (saved && saved !== palette && PALETTES.some((p) => p.id === saved)) {
+      setPalette(saved as PaletteId);
+    }
+  }, [profile.theme, palette, setPalette]);
 
   const mutation = useMutation({
     mutationFn: (input: Partial<UserProfile>) => updateMe(token, input),
@@ -297,13 +347,16 @@ function PortfolioTab({
               <Palette className="h-4 w-4" /> Theme
             </Label>
             <div className="grid gap-3 sm:grid-cols-3">
-              {THEMES.map((t) => {
-                const active = form.theme === t.id;
+              {PALETTES.map((t) => {
+                const active = (form.theme ?? palette) === t.id;
                 return (
                   <button
                     type="button"
                     key={t.id}
-                    onClick={() => setForm({ ...form, theme: t.id })}
+                    onClick={() => {
+                      setForm({ ...form, theme: t.id });
+                      setPalette(t.id);
+                    }}
                     className={cn(
                       "rounded-xl border p-4 text-left transition-colors",
                       active
@@ -342,6 +395,34 @@ function PortfolioTab({
             </Button>
           </div>
         </form>
+      </SectionCard>
+
+      <SectionCard
+        title="Appearance"
+        description="Dark mode applies instantly across your dashboard and portfolio."
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center rounded-lg bg-secondary text-foreground">
+              {mode === "dark" ? (
+                <Moon className="h-4 w-4" />
+              ) : (
+                <Sun className="h-4 w-4" />
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium">Dark mode</p>
+              <p className="text-xs text-muted-foreground">
+                Currently using the {mode} appearance.
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={mode === "dark"}
+            onCheckedChange={(v) => setMode(v ? "dark" : "light")}
+            aria-label="Toggle dark mode"
+          />
+        </div>
       </SectionCard>
     </div>
   );

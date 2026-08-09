@@ -9,7 +9,9 @@ export type BlogPost = {
   content?: string;
   excerpt?: string | null;
   coverImage?: string | null;
+  coverImageUrl?: string | null;
   cover_image?: string | null;
+
   tags?: string[];
   status?: "published" | "draft";
   published?: boolean;

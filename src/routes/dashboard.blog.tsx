@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, FileText, Eye } from "lucide-react";
+import { Plus, Search, FileText, Eye, Pencil, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,23 @@ import { useAuth } from "@/lib/auth";
 import { listBlogs, type BlogPost } from "@/lib/blog";
 
 export const Route = createFileRoute("/dashboard/blog")({
-  head: () => ({ meta: [{ title: "Blog — Portra" }] }),
+  head: () => ({
+    meta: [
+      { title: "Blog posts & drafts — Portra" },
+      {
+        name: "description",
+        content:
+          "Create new posts, continue drafts, and use the AI assistant to write or rewrite your engineering blog.",
+      },
+      { property: "og:title", content: "Blog posts & drafts — Portra" },
+      {
+        property: "og:description",
+        content: "Create, draft, and edit posts for your Portra portfolio.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: BlogListPage,
 });
 
@@ -49,6 +65,9 @@ function BlogListPage() {
       );
     });
   }, [query.data, search, status]);
+
+  const drafts = filtered.filter((p) => p.status !== "published");
+  const published = filtered.filter((p) => p.status === "published");
 
   return (
     <div className="space-y-6">
@@ -91,57 +110,89 @@ function BlogListPage() {
         </Select>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card shadow-soft">
-        {query.isLoading ? (
-          <div className="divide-y divide-border">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-6 py-5">
-                <Skeleton className="h-5 w-1/3" />
-                <Skeleton className="h-5 w-20" />
-                <Skeleton className="ml-auto h-5 w-24" />
+      {query.isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-44 w-full rounded-2xl" />
+          ))}
+        </div>
+      ) : query.isError ? (
+        <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center text-sm text-muted-foreground">
+          Couldn't load posts.
+        </div>
+      ) : (
+        <div className="space-y-8">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <NewPostCard />
+            {drafts.map((p) => (
+              <PostCard key={p.id} post={p} />
+            ))}
+          </div>
+
+          {published.length > 0 ? (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Published
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {published.map((p) => (
+                  <PostCard key={p.id} post={p} />
+                ))}
               </div>
-            ))}
-          </div>
-        ) : query.isError ? (
-          <div className="px-6 py-16 text-center text-sm text-muted-foreground">
-            Couldn't load posts.
-          </div>
-        ) : filtered.length === 0 ? (
-          (query.data?.length ?? 0) === 0 ? (
-            <EmptyBlog />
-          ) : (
-            <div className="px-6 py-16 text-center text-sm text-muted-foreground">
-              No posts match your filters.
+            </section>
+          ) : null}
+
+          {(query.data?.length ?? 0) === 0 ? (
+            <div className="rounded-2xl border border-border bg-card px-6 py-12 text-center">
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-secondary text-muted-foreground">
+                <FileText className="h-5 w-5" />
+              </div>
+              <p className="mt-3 text-base font-medium">No posts yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Start a draft, or let the AI assistant write the first pass.
+              </p>
             </div>
-          )
-        ) : (
-          <ul className="divide-y divide-border">
-            {filtered.map((p) => (
-              <BlogRow key={p.id} post={p} />
-            ))}
-          </ul>
-        )}
-      </div>
+          ) : filtered.length === 0 ? (
+            <p className="text-center text-sm text-muted-foreground">
+              No posts match your filters.
+            </p>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
 
-function BlogRow({ post }: { post: BlogPost }) {
+function NewPostCard() {
+  return (
+    <Link
+      to="/dashboard/blog/new"
+      className="group flex min-h-44 flex-col justify-center gap-2 rounded-2xl border border-dashed border-border bg-card/50 p-6 text-center transition-colors hover:border-accent hover:bg-accent/5"
+    >
+      <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-accent/10 text-accent">
+        <Plus className="h-5 w-5" />
+      </div>
+      <p className="text-base font-medium">New post</p>
+      <p className="text-xs text-muted-foreground">
+        Start from a blank page or draft it with the AI assistant.
+      </p>
+      <span className="mx-auto mt-1 inline-flex items-center gap-1 text-xs font-medium text-accent">
+        <Sparkles className="h-3.5 w-3.5" /> AI assistant available
+      </span>
+    </Link>
+  );
+}
+
+function PostCard({ post }: { post: BlogPost }) {
   const published = post.status === "published";
   const date = post.publishedAt ?? post.createdAt;
+  const excerpt =
+    post.excerpt ??
+    (post.content ? post.content.replace(/[#>*`_]/g, "").slice(0, 140) : "");
+
   return (
-    <li>
-      <Link
-        to="/dashboard/blog/$id/edit"
-        params={{ id: post.id }}
-        className="flex flex-wrap items-center gap-4 px-6 py-4 hover:bg-secondary/40"
-      >
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{post.title || "Untitled"}</p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            /{post.slug}
-          </p>
-        </div>
+    <article className="flex min-h-44 flex-col rounded-2xl border border-border bg-card p-5 shadow-soft transition-shadow hover:shadow-elevated">
+      <div className="flex items-start justify-between gap-3">
         <Badge
           variant={published ? "default" : "secondary"}
           className={cn(
@@ -151,7 +202,7 @@ function BlogRow({ post }: { post: BlogPost }) {
         >
           {published ? "Published" : "Draft"}
         </Badge>
-        <div className="hidden w-32 text-sm text-muted-foreground sm:block">
+        <span className="text-xs text-muted-foreground">
           {date
             ? new Date(date).toLocaleDateString(undefined, {
                 month: "short",
@@ -159,33 +210,31 @@ function BlogRow({ post }: { post: BlogPost }) {
                 year: "numeric",
               })
             : "—"}
-        </div>
-        <div className="hidden w-24 items-center gap-1.5 text-sm text-muted-foreground md:flex">
-          <Eye className="h-4 w-4" />
-          {post.views ?? 0}
-        </div>
-      </Link>
-    </li>
-  );
-}
+        </span>
+      </div>
 
-function EmptyBlog() {
-  return (
-    <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-      <div className="grid h-12 w-12 place-items-center rounded-full bg-secondary text-muted-foreground">
-        <FileText className="h-5 w-5" />
-      </div>
-      <div>
-        <p className="text-base font-medium">No posts yet</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Publish your first essay or technical note.
+      <h3 className="mt-3 line-clamp-2 text-base font-semibold tracking-tight">
+        {post.title || "Untitled"}
+      </h3>
+      <p className="mt-1 truncate text-xs text-muted-foreground">/{post.slug}</p>
+      {excerpt ? (
+        <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+          {excerpt}
         </p>
+      ) : null}
+
+      <div className="mt-auto flex items-center justify-between gap-2 pt-4">
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Eye className="h-3.5 w-3.5" />
+          {post.views ?? 0}
+        </span>
+        <Button asChild size="sm" variant={published ? "outline" : "default"} className="gap-1.5">
+          <Link to="/dashboard/blog/$id/edit" params={{ id: post.id }}>
+            <Pencil className="h-3.5 w-3.5" />
+            {published ? "Edit" : "Continue draft"}
+          </Link>
+        </Button>
       </div>
-      <Button asChild className="mt-2 gap-1.5">
-        <Link to="/dashboard/blog/new">
-          <Plus className="h-4 w-4" /> New post
-        </Link>
-      </Button>
-    </div>
+    </article>
   );
 }

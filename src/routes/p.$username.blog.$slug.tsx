@@ -84,7 +84,7 @@ function PublicBlogPost() {
             ) : null}
             <div
               className="prose prose-neutral mt-8 max-w-none text-foreground [&_a]:text-accent"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(q.data.content) }}
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(q.data.content ?? "") }}
             />
           </>
         ) : null}
