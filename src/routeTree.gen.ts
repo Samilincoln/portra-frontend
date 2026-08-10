@@ -9,38 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
-import { Route as DashboardExperienceRouteImport } from './routes/dashboard.experience'
-import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
-import { Route as DashboardTestimonialsRouteImport } from './routes/dashboard.testimonials'
 import { Route as PUsernameRouteImport } from './routes/p.$username'
-import { Route as DashboardBlogIndexRouteImport } from './routes/dashboard.blog.index'
-import { Route as DashboardBlogNewRouteImport } from './routes/dashboard.blog.new'
+import { Route as DashboardTestimonialsRouteImport } from './routes/dashboard.testimonials'
+import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
+import { Route as DashboardExperienceRouteImport } from './routes/dashboard.experience'
 import { Route as DashboardProjectsIndexRouteImport } from './routes/dashboard.projects.index'
-import { Route as DashboardProjectsIdRouteImport } from './routes/dashboard.projects.$id'
+import { Route as DashboardBlogIndexRouteImport } from './routes/dashboard.blog.index'
 import { Route as PUsernameBlogRouteImport } from './routes/p.$username.blog'
-import { Route as DashboardBlogIdEditRouteImport } from './routes/dashboard.blog.$id.edit'
-import { Route as PUsernameBlogSlugRouteImport } from './routes/p.$username.blog.$slug'
+import { Route as DashboardProjectsIdRouteImport } from './routes/dashboard.projects.$id'
+import { Route as DashboardBlogNewRouteImport } from './routes/dashboard.blog.new'
 import { Route as PUsernameProjectsSlugRouteImport } from './routes/p.$username.projects.$slug'
+import { Route as PUsernameBlogSlugRouteImport } from './routes/p.$username.blog.$slug'
+import { Route as DashboardBlogIdEditRouteImport } from './routes/dashboard.blog.$id.edit'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -48,9 +38,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
@@ -58,9 +58,14 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardExperienceRoute = DashboardExperienceRouteImport.update({
-  id: '/experience',
-  path: '/experience',
+const PUsernameRoute = PUsernameRouteImport.update({
+  id: '/p/$username',
+  path: '/p/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardTestimonialsRoute = DashboardTestimonialsRouteImport.update({
+  id: '/testimonials',
+  path: '/testimonials',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
@@ -68,24 +73,9 @@ const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardTestimonialsRoute = DashboardTestimonialsRouteImport.update({
-  id: '/testimonials',
-  path: '/testimonials',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const PUsernameRoute = PUsernameRouteImport.update({
-  id: '/p/$username',
-  path: '/p/$username',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardBlogIndexRoute = DashboardBlogIndexRouteImport.update({
-  id: '/blog/',
-  path: '/blog/',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardBlogNewRoute = DashboardBlogNewRouteImport.update({
-  id: '/blog/new',
-  path: '/blog/new',
+const DashboardExperienceRoute = DashboardExperienceRouteImport.update({
+  id: '/experience',
+  path: '/experience',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardProjectsIndexRoute = DashboardProjectsIndexRouteImport.update({
@@ -93,9 +83,9 @@ const DashboardProjectsIndexRoute = DashboardProjectsIndexRouteImport.update({
   path: '/projects/',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardProjectsIdRoute = DashboardProjectsIdRouteImport.update({
-  id: '/projects/$id',
-  path: '/projects/$id',
+const DashboardBlogIndexRoute = DashboardBlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
   getParentRoute: () => DashboardRoute,
 } as any)
 const PUsernameBlogRoute = PUsernameBlogRouteImport.update({
@@ -103,20 +93,30 @@ const PUsernameBlogRoute = PUsernameBlogRouteImport.update({
   path: '/blog',
   getParentRoute: () => PUsernameRoute,
 } as any)
-const DashboardBlogIdEditRoute = DashboardBlogIdEditRouteImport.update({
-  id: '/blog/$id/edit',
-  path: '/blog/$id/edit',
+const DashboardProjectsIdRoute = DashboardProjectsIdRouteImport.update({
+  id: '/projects/$id',
+  path: '/projects/$id',
   getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardBlogNewRoute = DashboardBlogNewRouteImport.update({
+  id: '/blog/new',
+  path: '/blog/new',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const PUsernameProjectsSlugRoute = PUsernameProjectsSlugRouteImport.update({
+  id: '/projects/$slug',
+  path: '/projects/$slug',
+  getParentRoute: () => PUsernameRoute,
 } as any)
 const PUsernameBlogSlugRoute = PUsernameBlogSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => PUsernameBlogRoute,
 } as any)
-const PUsernameProjectsSlugRoute = PUsernameProjectsSlugRouteImport.update({
-  id: '/projects/$slug',
-  path: '/projects/$slug',
-  getParentRoute: () => PUsernameRoute,
+const DashboardBlogIdEditRoute = DashboardBlogIdEditRouteImport.update({
+  id: '/blog/$id/edit',
+  path: '/blog/$id/edit',
+  getParentRoute: () => DashboardRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -252,25 +252,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -280,11 +266,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/': {
@@ -294,11 +294,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/experience': {
-      id: '/dashboard/experience'
-      path: '/experience'
-      fullPath: '/dashboard/experience'
-      preLoaderRoute: typeof DashboardExperienceRouteImport
+    '/p/$username': {
+      id: '/p/$username'
+      path: '/p/$username'
+      fullPath: '/p/$username'
+      preLoaderRoute: typeof PUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/testimonials': {
+      id: '/dashboard/testimonials'
+      path: '/testimonials'
+      fullPath: '/dashboard/testimonials'
+      preLoaderRoute: typeof DashboardTestimonialsRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/settings': {
@@ -308,32 +315,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/testimonials': {
-      id: '/dashboard/testimonials'
-      path: '/testimonials'
-      fullPath: '/dashboard/testimonials'
-      preLoaderRoute: typeof DashboardTestimonialsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/p/$username': {
-      id: '/p/$username'
-      path: '/p/$username'
-      fullPath: '/p/$username'
-      preLoaderRoute: typeof PUsernameRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard/blog/': {
-      id: '/dashboard/blog/'
-      path: '/blog'
-      fullPath: '/dashboard/blog/'
-      preLoaderRoute: typeof DashboardBlogIndexRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/dashboard/blog/new': {
-      id: '/dashboard/blog/new'
-      path: '/blog/new'
-      fullPath: '/dashboard/blog/new'
-      preLoaderRoute: typeof DashboardBlogNewRouteImport
+    '/dashboard/experience': {
+      id: '/dashboard/experience'
+      path: '/experience'
+      fullPath: '/dashboard/experience'
+      preLoaderRoute: typeof DashboardExperienceRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/projects/': {
@@ -343,11 +329,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProjectsIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/projects/$id': {
-      id: '/dashboard/projects/$id'
-      path: '/projects/$id'
-      fullPath: '/dashboard/projects/$id'
-      preLoaderRoute: typeof DashboardProjectsIdRouteImport
+    '/dashboard/blog/': {
+      id: '/dashboard/blog/'
+      path: '/blog'
+      fullPath: '/dashboard/blog/'
+      preLoaderRoute: typeof DashboardBlogIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/p/$username/blog': {
@@ -357,12 +343,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PUsernameBlogRouteImport
       parentRoute: typeof PUsernameRoute
     }
-    '/dashboard/blog/$id/edit': {
-      id: '/dashboard/blog/$id/edit'
-      path: '/blog/$id/edit'
-      fullPath: '/dashboard/blog/$id/edit'
-      preLoaderRoute: typeof DashboardBlogIdEditRouteImport
+    '/dashboard/projects/$id': {
+      id: '/dashboard/projects/$id'
+      path: '/projects/$id'
+      fullPath: '/dashboard/projects/$id'
+      preLoaderRoute: typeof DashboardProjectsIdRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/blog/new': {
+      id: '/dashboard/blog/new'
+      path: '/blog/new'
+      fullPath: '/dashboard/blog/new'
+      preLoaderRoute: typeof DashboardBlogNewRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/p/$username/projects/$slug': {
+      id: '/p/$username/projects/$slug'
+      path: '/projects/$slug'
+      fullPath: '/p/$username/projects/$slug'
+      preLoaderRoute: typeof PUsernameProjectsSlugRouteImport
+      parentRoute: typeof PUsernameRoute
     }
     '/p/$username/blog/$slug': {
       id: '/p/$username/blog/$slug'
@@ -371,12 +371,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PUsernameBlogSlugRouteImport
       parentRoute: typeof PUsernameBlogRoute
     }
-    '/p/$username/projects/$slug': {
-      id: '/p/$username/projects/$slug'
-      path: '/projects/$slug'
-      fullPath: '/p/$username/projects/$slug'
-      preLoaderRoute: typeof PUsernameProjectsSlugRouteImport
-      parentRoute: typeof PUsernameRoute
+    '/dashboard/blog/$id/edit': {
+      id: '/dashboard/blog/$id/edit'
+      path: '/blog/$id/edit'
+      fullPath: '/dashboard/blog/$id/edit'
+      preLoaderRoute: typeof DashboardBlogIdEditRouteImport
+      parentRoute: typeof DashboardRoute
     }
   }
 }
