@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FolderKanban,
   Globe2,
@@ -8,11 +8,20 @@ import {
   Plus,
   Briefcase,
   ExternalLink,
+  Bell,
+  CheckCheck,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { getDashboardStats, type DashboardStats } from "@/lib/dashboard";
 import { getMe } from "@/lib/users";
+import {
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type Notification,
+} from "@/lib/notifications";
+import { NotificationRow } from "@/components/dashboard/NotificationRow";
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({ meta: [{ title: "Dashboard — Portra" }] }),
@@ -21,6 +30,7 @@ export const Route = createFileRoute("/dashboard/")({
 
 function DashboardHome() {
   const { user, token } = useAuth();
+  const qc = useQueryClient();
   const greeting = user?.name?.split(" ")[0] ?? "there";
 
   const statsQuery = useQuery({
@@ -32,6 +42,24 @@ function DashboardHome() {
     queryKey: ["user-profile"],
     queryFn: () => getMe(token),
   });
+
+  const notificationsQuery = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => listNotifications(token),
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) => markNotificationRead(token!, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () => markAllNotificationsRead(token!),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  const notifications = notificationsQuery.data ?? [];
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const s = statsQuery.data;
 
@@ -112,6 +140,56 @@ function DashboardHome() {
                 </div>
               );
             })}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-lg font-semibold tracking-tight">Recent Activity</h2>
+            {unreadCount > 0 && (
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                {unreadCount} unread
+              </span>
+            )}
+          </div>
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={() => markAllReadMutation.mutate()}
+              disabled={markAllReadMutation.isPending}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <CheckCheck className="h-3.5 w-3.5" />
+              Mark all read
+            </button>
+          )}
+        </div>
+        <div className="mt-4 space-y-1">
+          {notificationsQuery.isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-3 rounded-lg px-3 py-2.5">
+                <div className="mt-0.5 h-4 w-4 shrink-0 rounded bg-muted animate-pulse" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-4 w-48 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-64 rounded bg-muted animate-pulse" />
+                </div>
+              </div>
+            ))
+          ) : notifications.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No notifications yet.
+            </p>
+          ) : (
+            notifications.slice(0, 5).map((n) => (
+              <NotificationRow
+                key={n.id}
+                notification={n}
+                onRead={(id) => markReadMutation.mutate(id)}
+              />
+            ))
+          )}
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">

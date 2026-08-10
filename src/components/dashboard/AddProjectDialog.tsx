@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Github, Loader2, Sparkles } from "lucide-react";
 
 import {
   Dialog,
@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import {
   createProject,
+  generateFromGithub,
   slugify,
   type CreateProjectInput,
 } from "@/lib/projects";
@@ -45,14 +47,14 @@ const CATEGORIES = [
 ];
 
 const schema = z.object({
-  title: z.string().trim().min(2, "Title is required").max(120),
+  title: z.string().trim().min(2, "Title is required").max(200),
   slug: z
     .string()
     .trim()
     .min(2, "Slug is required")
     .max(80)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and dashes"),
-  shortDescription: z.string().trim().min(1, "Short description is required").max(240),
+  shortDescription: z.string().trim().min(1, "Short description is required").max(500),
   problem: z.string().max(2000).optional(),
   solution: z.string().max(2000).optional(),
   architecture: z.string().max(2000).optional(),
@@ -176,6 +178,34 @@ export function AddProjectDialog({ open, onOpenChange }: Props) {
     },
   });
 
+  const githubSummaryMutation = useMutation({
+    mutationFn: (githubUrl: string) => generateFromGithub(token, githubUrl),
+    onSuccess: (data, githubUrl) => {
+      setForm((f) => {
+        const aiTechs = Array.isArray(data.technologies) ? data.technologies : [];
+        const mergedTechs = Array.from(new Set([...f.technologies, ...aiTechs]));
+        const aiTags = Array.isArray(data.tags) ? data.tags : [];
+        const mergedTags = Array.from(new Set([...f.tags, ...aiTags]));
+        return {
+          ...f,
+          title: data.title ?? f.title,
+          slug: f.slugTouched ? f.slug : slugify(data.title ?? f.title),
+          githubUrl: githubUrl || f.githubUrl,
+          shortDescription: data.description ?? f.shortDescription,
+          problem: data.problem ?? f.problem,
+          solution: data.solution ?? f.solution,
+          results: data.results ?? f.results,
+          architecture: data.architecture ?? f.architecture,
+          technologies: mergedTechs,
+          tags: mergedTags,
+        };
+      });
+      toast.success("Project details generated from GitHub — review before saving");
+    },
+    onError: (err: { message?: string }) =>
+      toast.error(err?.message ?? "Could not generate from GitHub"),
+  });
+
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const payload = {
@@ -221,6 +251,13 @@ export function AddProjectDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-6">
+          <GitHubSummaryCard
+            githubUrl={form.githubUrl}
+            isPending={githubSummaryMutation.isPending}
+            onGenerate={(url) => githubSummaryMutation.mutate(url)}
+            onUrlChange={(url) => update("githubUrl", url)}
+          />
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Title" error={errors.title}>
               <Input
@@ -495,5 +532,64 @@ function ChipInput({
         className="flex-1 min-w-[8rem] bg-transparent px-1 py-0.5 text-sm outline-none"
       />
     </div>
+  );
+}
+
+function GitHubSummaryCard({
+  githubUrl,
+  isPending,
+  onGenerate,
+  onUrlChange,
+}: {
+  githubUrl: string;
+  isPending: boolean;
+  onGenerate: (url: string) => void;
+  onUrlChange: (url: string) => void;
+}) {
+  const [url, setUrl] = useState(githubUrl);
+
+  useEffect(() => {
+    setUrl(githubUrl);
+  }, [githubUrl]);
+
+  return (
+    <Card className="border-dashed border-primary/30 bg-primary/5">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Github className="h-4 w-4" />
+          Generate from GitHub
+        </CardTitle>
+        <CardDescription>
+          Paste a GitHub repository URL to auto-fill project details.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2">
+          <Input
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              onUrlChange(e.target.value);
+            }}
+            placeholder="https://github.com/user/repo"
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant="default"
+            disabled={!url.trim() || isPending}
+            onClick={() => onGenerate(url.trim())}
+            className="gap-1.5 shrink-0"
+          >
+            {isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Generate
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

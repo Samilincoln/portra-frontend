@@ -1,5 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -15,10 +16,11 @@ import {
   Menu,
   Moon,
   Sun,
-
+  CheckCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -28,9 +30,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import {
+  listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "@/lib/notifications";
+import { NotificationRow } from "@/components/dashboard/NotificationRow";
 
 const nav: Array<{
   to:
@@ -114,10 +128,30 @@ function SidebarInner({ pathname, onNavigate }: { pathname: string; onNavigate?:
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const { mode, toggleMode } = useTheme();
+  const qc = useQueryClient();
+
+  const notificationsQuery = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => listNotifications(token),
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) => markNotificationRead(token!, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () => markAllNotificationsRead(token!),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
+  const notifications = notificationsQuery.data ?? [];
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   function handleLogout() {
     logout();
@@ -175,9 +209,66 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Moon className="h-4 w-4" />
             )}
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Notifications">
-            <Bell className="h-4 w-4" />
-          </Button>
+          <Popover open={notifOpen} onOpenChange={setNotifOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <Badge className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px]">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-0">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <p className="text-sm font-semibold">Notifications</p>
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => markAllReadMutation.mutate()}
+                    disabled={markAllReadMutation.isPending}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <CheckCheck className="h-3.5 w-3.5" />
+                    Mark all read
+                  </button>
+                )}
+              </div>
+              <ScrollArea className="max-h-80">
+                {notificationsQuery.isLoading ? (
+                  <div className="space-y-1 p-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex items-start gap-3 rounded-lg px-3 py-2.5">
+                        <div className="mt-0.5 h-4 w-4 shrink-0 rounded bg-muted animate-pulse" />
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-4 w-40 rounded bg-muted animate-pulse" />
+                          <div className="h-3 w-56 rounded bg-muted animate-pulse" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    No notifications yet.
+                  </p>
+                ) : (
+                  <div className="space-y-0.5 p-2">
+                    {notifications.slice(0, 10).map((n) => (
+                      <NotificationRow
+                        key={n.id}
+                        notification={n}
+                        onRead={(id) => {
+                          markReadMutation.mutate(id);
+                          setNotifOpen(false);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
