@@ -34,7 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { useAuth } from "@/lib/auth";
-import { listProjects, type Project } from "@/lib/projects";
+import { listProjects, deleteProject, type Project } from "@/lib/projects";
 import { getMe } from "@/lib/users";
 import { AddProjectDialog } from "@/components/dashboard/AddProjectDialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -67,13 +67,7 @@ function ProjectsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      });
-      if (!res.ok) throw new Error("Failed to delete project");
-    },
+    mutationFn: (id: string) => deleteProject(token, id),
     onSuccess: () => {
       toast.success("Project deleted");
       queryClient.invalidateQueries({ queryKey: ["projects"] });

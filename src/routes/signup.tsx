@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { authFetch, useAuth, type AuthUser, type AuthApiError } from "@/lib/auth";
+import { getMe } from "@/lib/users";
 
 const schema = z
   .object({
@@ -60,10 +61,22 @@ function SignupPage() {
       if (!token) {
         throw { message: "Invalid response: token not found in response" } satisfies AuthApiError;
       }
+      const initialUser = data.user ?? { name: payload.name, email: payload.email };
       setSession({
         token,
-        user: data.user ?? { name: payload.name, email: payload.email },
+        user: initialUser,
       });
+      // Fetch full profile to ensure name is populated
+      if (!initialUser?.name) {
+        try {
+          const profile = await getMe(token);
+          if (profile?.name) {
+            setSession({ token, user: { ...initialUser, name: profile.name, username: profile.username } });
+          }
+        } catch {
+          // Profile fetch failed, continue with initial user
+        }
+      }
       await router.invalidate();
       navigate({ to: "/dashboard" });
     } catch (err) {

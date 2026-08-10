@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -51,6 +52,7 @@ import { useAuth } from "@/lib/auth";
 import {
   deleteProject,
   generateProjectSummary,
+  generateFromGithub,
   getProject,
   slugify,
   updateProject,
@@ -69,13 +71,13 @@ const CATEGORIES = [
 ];
 
 const schema = z.object({
-  title: z.string().trim().min(2, "Title is required").max(120),
+  title: z.string().trim().min(2, "Title is required").max(200),
   slug: z
     .string()
     .trim()
     .min(2, "Slug is required")
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and dashes"),
-  shortDescription: z.string().trim().min(1, "Short description is required").max(240),
+  shortDescription: z.string().trim().min(1, "Short description is required").max(500),
   category: z.string().min(1, "Select a category"),
   technologies: z.array(z.string()).min(1, "Add at least one technology"),
 });
@@ -106,22 +108,27 @@ type FormState = {
 
 function toForm(p: Project): FormState {
   return {
-    title: p.title ?? "",
-    slug: p.slug ?? "",
+    title: p?.title ?? "",
+    slug: p?.slug ?? "",
     slugTouched: true,
-    shortDescription: p.shortDescription ?? "",
-    problem: p.problem ?? "",
-    solution: p.solution ?? "",
-    architecture: p.architecture ?? "",
-    results: p.results ?? "",
-    technologies: p.technologies ?? [],
-    githubUrl: p.githubUrl ?? "",
-    liveDemoUrl: p.liveDemoUrl ?? "",
-    category: p.category ?? "",
-    tags: p.tags ?? [],
-    featured: Boolean(p.featured),
-    published: p.status === "published" || Boolean(p.published),
-    screenshots: p.screenshots?.map((s, i) => ({ name: `screenshot-${i}`, url: s })) ?? [],
+    shortDescription: p?.shortDescription ?? "",
+    problem: p?.problem ?? "",
+    solution: p?.solution ?? "",
+    architecture: p?.architecture ?? "",
+    results: p?.results ?? "",
+    technologies: Array.isArray(p?.technologies) ? p.technologies : [],
+    githubUrl: p?.githubUrl ?? "",
+    liveDemoUrl: p?.liveDemoUrl ?? "",
+    category: p?.category ?? "",
+    tags: Array.isArray(p?.tags) ? p.tags : [],
+    featured: Boolean(p?.featured),
+    published: p?.status === "published" || Boolean(p?.published),
+    screenshots: Array.isArray(p?.screenshots)
+      ? p.screenshots.map((s, i) => ({
+          name: `screenshot-${i}`,
+          url: String(s),
+        }))
+      : [],
   };
 }
 
@@ -135,6 +142,7 @@ function ProjectDetailPage() {
   const query = useQuery({
     queryKey: ["projects", id],
     queryFn: () => getProject(token, id),
+    enabled: Boolean(id),
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
@@ -164,6 +172,7 @@ function ProjectDetailPage() {
       toast.success("Project saved");
       qc.setQueryData(["projects", id], data);
       qc.invalidateQueries({ queryKey: ["projects"] });
+      setForm(toForm(data));
       setIsEditing(false);
     },
     onError: (err: { message?: string }) =>
@@ -177,6 +186,7 @@ function ProjectDetailPage() {
       toast.success(published ? "Project published" : "Moved to draft");
       qc.setQueryData(["projects", id], data);
       qc.invalidateQueries({ queryKey: ["projects"] });
+      setForm(toForm(data));
     },
     onError: (err: { message?: string }) =>
       toast.error(err?.message ?? "Could not update status"),
@@ -201,6 +211,36 @@ function ProjectDetailPage() {
     },
     onError: (err: { message?: string }) =>
       toast.error(err?.message ?? "Could not generate summary"),
+  });
+
+  const githubSummaryMutation = useMutation({
+    mutationFn: (githubUrl: string) => generateFromGithub(token, githubUrl, id),
+    onSuccess: (data, githubUrl) => {
+      setForm((f) => {
+        if (!f) return f;
+        const aiTechs = Array.isArray(data.technologies) ? data.technologies : [];
+        const mergedTechs = Array.from(new Set([...f.technologies, ...aiTechs]));
+        const aiTags = Array.isArray(data.tags) ? data.tags : [];
+        const mergedTags = Array.from(new Set([...f.tags, ...aiTags]));
+        return {
+          ...f,
+          title: data.title ?? f.title,
+          slug: f.slugTouched ? f.slug : slugify(data.title ?? f.title),
+          slugTouched: data.title ? false : f.slugTouched,
+          githubUrl: githubUrl,
+          shortDescription: data.description ?? f.shortDescription,
+          problem: data.problem ?? f.problem,
+          solution: data.solution ?? f.solution,
+          results: data.results ?? f.results,
+          architecture: data.architecture ?? f.architecture,
+          technologies: mergedTechs,
+          tags: mergedTags,
+        };
+      });
+      toast.success("Project details generated from GitHub — review before saving");
+    },
+    onError: (err: { message?: string }) =>
+      toast.error(err?.message ?? "Could not generate from GitHub"),
   });
 
   const deleteMutation = useMutation({
@@ -278,13 +318,29 @@ function ProjectDetailPage() {
         if (k && !fe[k]) fe[k] = issue.message;
       }
       setErrors(fe);
+      toast.error("Fix the highlighted fields before saving");
       return;
     }
     setErrors({});
     saveMutation.mutate({
-      ...parsed.data,
+      ...payload,
       screenshots: form.screenshots.map((s) => s.url),
     } as CreateProjectInput);
+  }
+
+  if (!id) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-12 text-center">
+        <p className="text-sm text-muted-foreground">Invalid project ID.</p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => navigate({ to: "/dashboard/projects" })}
+        >
+          Back to projects
+        </Button>
+      </div>
+    );
   }
 
   if (query.isLoading || !form) {
@@ -377,24 +433,14 @@ function ProjectDetailPage() {
               onSubmit={onSubmit}
               className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-soft"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">Project details</h2>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => summaryMutation.mutate()}
-                  disabled={summaryMutation.isPending}
-                  className="gap-1.5"
-                >
-                  {summaryMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
-                  Generate AI summary
-                </Button>
-              </div>
+              <h2 className="text-lg font-semibold">Project details</h2>
+
+              <GitHubSummaryCard
+                githubUrl={form.githubUrl}
+                isPending={githubSummaryMutation.isPending}
+                onGenerate={(url) => githubSummaryMutation.mutate(url)}
+                onUrlChange={(url) => upd("githubUrl", url)}
+              />
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Title" error={errors.title}>
@@ -679,8 +725,8 @@ function ProjectDetailPage() {
                 <Field label="Technologies">
                   {form.technologies.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
-                      {form.technologies.map((t) => (
-                        <Badge key={t} variant="secondary" className="font-normal">
+                      {form.technologies.map((t, i) => (
+                        <Badge key={`${t}-${i}`} variant="secondary" className="font-normal">
                           {t}
                         </Badge>
                       ))}
@@ -838,8 +884,8 @@ function PreviewCard({ form }: { form: FormState }) {
         </p>
         {form.technologies.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {form.technologies.slice(0, 8).map((t) => (
-              <Badge key={t} variant="secondary" className="font-normal">
+            {form.technologies.slice(0, 8).map((t, i) => (
+              <Badge key={`${t}-${i}`} variant="secondary" className="font-normal">
                 {t}
               </Badge>
             ))}
@@ -918,5 +964,64 @@ function ChipInput({
         className="flex-1 min-w-[8rem] bg-transparent px-1 py-0.5 text-sm outline-none"
       />
     </div>
+  );
+}
+
+function GitHubSummaryCard({
+  githubUrl,
+  isPending,
+  onGenerate,
+  onUrlChange,
+}: {
+  githubUrl: string;
+  isPending: boolean;
+  onGenerate: (url: string) => void;
+  onUrlChange: (url: string) => void;
+}) {
+  const [url, setUrl] = useState(githubUrl);
+
+  useEffect(() => {
+    setUrl(githubUrl);
+  }, [githubUrl]);
+
+  return (
+    <Card className="border-dashed border-primary/30 bg-primary/5">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Github className="h-4 w-4" />
+          Generate from GitHub
+        </CardTitle>
+        <CardDescription>
+          Paste a GitHub repository URL to auto-fill project details.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2">
+          <Input
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              onUrlChange(e.target.value);
+            }}
+            placeholder="https://github.com/user/repo"
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant="default"
+            disabled={!url.trim() || isPending}
+            onClick={() => onGenerate(url.trim())}
+            className="gap-1.5 shrink-0"
+          >
+            {isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Generate
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -11,9 +11,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { useAuth } from "@/lib/auth";
-import { slugify } from "@/lib/projects";
+import { slugify, listProjects, type Project } from "@/lib/projects";
 import { AiBlogAssistant } from "@/components/dashboard/AiBlogAssistant";
 
 import {
@@ -52,6 +59,12 @@ export function BlogEditor({ existing }: Props) {
   const [content, setContent] = useState(existing?.content ?? "");
   const [published, setPublished] = useState(existing?.status === "published");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ["projects"],
+    queryFn: () => listProjects(token),
+  });
 
   const autoSlug = useMemo(() => slugify(title), [title]);
 
@@ -69,9 +82,7 @@ export function BlogEditor({ existing }: Props) {
     onSuccess: (data) => {
       toast.success(existing ? "Post updated" : "Post created");
       qc.invalidateQueries({ queryKey: ["blogs"] });
-      if (!existing) {
-        navigate({ to: "/dashboard/blog/$id/edit", params: { id: data.id } });
-      }
+      navigate({ to: "/dashboard/blog" });
     },
     onError: (err: { message?: string }) =>
       toast.error(err?.message ?? "Could not save"),
@@ -134,6 +145,7 @@ export function BlogEditor({ existing }: Props) {
           <AiBlogAssistant
             title={title}
             content={content}
+            projectId={selectedProjectId || undefined}
             onApply={({ title: t, content: c }) => {
               if (t) setTitle(t);
               setContent(c);
@@ -170,6 +182,28 @@ export function BlogEditor({ existing }: Props) {
             )}
           </Button>
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Project (optional)</Label>
+        <Select
+          value={selectedProjectId}
+          onValueChange={setSelectedProjectId}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a project to link this blog post" />
+          </SelectTrigger>
+          <SelectContent>
+            {projects.map((project) => (
+              <SelectItem key={project.id} value={project.id}>
+                {project.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Link a project to provide context for the AI writing assistant.
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

@@ -1,4 +1,4 @@
-import { API_BASE_URL, type AuthApiError } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth";
 
 export type Experience = {
   id: string;
@@ -19,28 +19,6 @@ export type Experience = {
 
 export type ExperienceInput = Omit<Experience, "id">;
 
-function authHeaders(token: string | null): HeadersInit {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) h.Authorization = `Bearer ${token}`;
-  return h;
-}
-
-async function handle<T>(res: Response): Promise<T> {
-  const ct = res.headers.get("content-type") ?? "";
-  const data = ct.includes("application/json")
-    ? await res.json().catch(() => ({}))
-    : {};
-  if (!res.ok) {
-    throw {
-      message:
-        (data as { message?: string }).message ??
-        `Request failed (${res.status})`,
-      fields: (data as { fields?: Record<string, string> }).fields,
-    } satisfies AuthApiError;
-  }
-  return data as T;
-}
-
 export async function listExperiences(
   token: string | null,
   params?: { skip?: number; limit?: number }
@@ -49,10 +27,11 @@ export async function listExperiences(
   if (params?.skip !== undefined) search.set("skip", String(params.skip));
   if (params?.limit !== undefined) search.set("limit", String(params.limit));
 
-  const res = await fetch(`${API_BASE_URL}/api/v1/experiences?${search}`, {
-    headers: authHeaders(token),
-  });
-  const data = await handle<Experience[] | { experiences: Experience[] }>(res);
+  const qs = search.toString();
+  const data = await apiFetch<Experience[] | { experiences: Experience[] }>(
+    `/api/v1/experiences${qs ? `?${qs}` : ""}`,
+    token,
+  );
   return Array.isArray(data) ? data : (data.experiences ?? []);
 }
 
@@ -60,22 +39,14 @@ export async function createExperience(
   token: string | null,
   input: ExperienceInput,
 ): Promise<Experience> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/experiences`, {
-    method: "POST",
-    headers: authHeaders(token),
-    body: JSON.stringify(input),
-  });
-  return handle<Experience>(res);
+  return apiFetch<Experience>("/api/v1/experiences", token, { method: "POST", body: input });
 }
 
 export async function getExperience(
   token: string | null,
   id: string,
 ): Promise<Experience> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/experiences/${id}`, {
-    headers: authHeaders(token),
-  });
-  return handle<Experience>(res);
+  return apiFetch<Experience>(`/api/v1/experiences/${id}`, token);
 }
 
 export async function updateExperience(
@@ -83,21 +54,12 @@ export async function updateExperience(
   id: string,
   input: Partial<ExperienceInput>,
 ): Promise<Experience> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/experiences/${id}`, {
-    method: "PATCH",
-    headers: authHeaders(token),
-    body: JSON.stringify(input),
-  });
-  return handle<Experience>(res);
+  return apiFetch<Experience>(`/api/v1/experiences/${id}`, token, { method: "PATCH", body: input });
 }
 
 export async function deleteExperience(
   token: string | null,
   id: string,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/experiences/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(token),
-  });
-  if (!res.ok && res.status !== 204) await handle(res);
+  await apiFetch(`/api/v1/experiences/${id}`, token, { method: "DELETE" });
 }

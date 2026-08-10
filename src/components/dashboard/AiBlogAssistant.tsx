@@ -19,14 +19,17 @@ import {
 } from "@/components/ui/dialog";
 
 import { draftBlogPost } from "@/lib/ai.functions";
+import { useAuth } from "@/lib/auth";
 
 type Props = {
   title: string;
   content: string;
+  projectId?: string;
   onApply: (draft: { title: string; content: string }) => void;
 };
 
-export function AiBlogAssistant({ title, content, onApply }: Props) {
+export function AiBlogAssistant({ title, content, projectId, onApply }: Props) {
+  const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const [context, setContext] = useState("");
   const [tone, setTone] = useState("");
@@ -37,10 +40,12 @@ export function AiBlogAssistant({ title, content, onApply }: Props) {
       run({
         data: {
           mode,
+          projectId: projectId || undefined,
           context,
           title: title || undefined,
           existingContent: content || undefined,
           tone: tone || undefined,
+          token,
         },
       }),
     onSuccess: (draft) => {

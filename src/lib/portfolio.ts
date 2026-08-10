@@ -1,4 +1,4 @@
-import { API_BASE_URL, type AuthApiError } from "@/lib/auth";
+import { API_BASE_URL, apiFetch } from "@/lib/auth";
 import type { Project } from "@/lib/projects";
 import type { Skill } from "@/lib/skills";
 import type { Experience } from "@/lib/experiences";
@@ -31,11 +31,27 @@ export type PortfolioProfile = {
   experiences?: Experience[];
 };
 
-async function handle<T>(res: Response): Promise<T> {
-  const ct = res.headers.get("content-type") ?? "";
-  const data = ct.includes("application/json")
+async function portfolioFetch<T>(
+  path: string,
+  options?: { method?: "GET" | "POST"; body?: unknown },
+): Promise<T> {
+  const url = `${API_BASE_URL}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: options?.method ?? "GET",
+      headers: { "Content-Type": "application/json" },
+      body: options?.body != null ? JSON.stringify(options.body) : undefined,
+    });
+  } catch {
+    throw { message: "Network error. Please try again." };
+  }
+
+  const contentType = res.headers.get("content-type") ?? "";
+  const data = contentType.includes("application/json")
     ? await res.json().catch(() => ({}))
     : {};
+
   if (!res.ok) {
     if (res.status === 404) {
       throw new PortfolioNotFoundError(
@@ -46,25 +62,23 @@ async function handle<T>(res: Response): Promise<T> {
       message:
         (data as { message?: string }).message ??
         `Request failed (${res.status})`,
-    } satisfies AuthApiError;
+    };
   }
   return data as T;
 }
 
 export async function getPortfolio(username: string): Promise<PortfolioProfile> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}`,
+  return portfolioFetch<PortfolioProfile>(
+    `/api/v1/portfolio/${encodeURIComponent(username)}`,
   );
-  return handle<PortfolioProfile>(res);
 }
 
 export async function getPortfolioProjects(
   username: string,
 ): Promise<Project[]> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/projects`,
+  const data = await portfolioFetch<Project[] | { projects: Project[] }>(
+    `/api/v1/portfolio/${encodeURIComponent(username)}/projects`,
   );
-  const data = await handle<Project[] | { projects: Project[] }>(res);
   return Array.isArray(data) ? data : (data.projects ?? []);
 }
 
@@ -72,39 +86,35 @@ export async function getPortfolioProject(
   username: string,
   slug: string,
 ): Promise<Project> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/projects/${encodeURIComponent(slug)}`,
+  return portfolioFetch<Project>(
+    `/api/v1/portfolio/${encodeURIComponent(username)}/projects/${encodeURIComponent(slug)}`,
   );
-  return handle<Project>(res);
 }
 
 export async function getPortfolioExperiences(
   username: string,
 ): Promise<Experience[]> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/experience`,
+  const data = await portfolioFetch<Experience[] | { experiences: Experience[] }>(
+    `/api/v1/portfolio/${encodeURIComponent(username)}/experience`,
   );
-  const data = await handle<Experience[] | { experiences: Experience[] }>(res);
   return Array.isArray(data) ? data : (data.experiences ?? []);
 }
 
 export async function getPortfolioTestimonials(
   username: string,
 ): Promise<Testimonial[]> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/testimonials`,
+  const data = await portfolioFetch<Testimonial[] | { testimonials: Testimonial[] }>(
+    `/api/v1/portfolio/${encodeURIComponent(username)}/testimonials`,
   );
-  const data = await handle<Testimonial[] | { testimonials: Testimonial[] }>(res);
   return Array.isArray(data) ? data : (data.testimonials ?? []);
 }
 
 export async function getPortfolioBlog(
   username: string,
 ): Promise<BlogPost[]> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/blog`,
+  const data = await portfolioFetch<BlogPost[] | { posts: BlogPost[] }>(
+    `/api/v1/portfolio/${encodeURIComponent(username)}/blog`,
   );
-  const data = await handle<BlogPost[] | { posts: BlogPost[] }>(res);
   return Array.isArray(data) ? data : (data.posts ?? []);
 }
 
@@ -112,10 +122,9 @@ export async function getPortfolioBlogPost(
   username: string,
   slug: string,
 ): Promise<BlogPost> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/blog/${encodeURIComponent(slug)}`,
+  return portfolioFetch<BlogPost>(
+    `/api/v1/portfolio/${encodeURIComponent(username)}/blog/${encodeURIComponent(slug)}`,
   );
-  return handle<BlogPost>(res);
 }
 
 export type ContactInput = { name: string; email: string; message: string };
@@ -124,13 +133,8 @@ export async function submitContact(
   username: string,
   input: ContactInput,
 ): Promise<{ ok: true }> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/v1/portfolio/${encodeURIComponent(username)}/contact`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    },
+  return portfolioFetch<{ ok: true }>(
+    `/api/v1/portfolio/${encodeURIComponent(username)}/contact`,
+    { method: "POST", body: input },
   );
-  return handle<{ ok: true }>(res);
 }

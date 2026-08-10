@@ -1,4 +1,4 @@
-import { API_BASE_URL, type AuthApiError } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth";
 
 export type BlogStatus = "published" | "draft";
 
@@ -30,28 +30,6 @@ export type BlogInput = {
   status: BlogStatus;
 };
 
-function authHeaders(token: string | null): HeadersInit {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) h.Authorization = `Bearer ${token}`;
-  return h;
-}
-
-async function handle<T>(res: Response): Promise<T> {
-  const ct = res.headers.get("content-type") ?? "";
-  const data = ct.includes("application/json")
-    ? await res.json().catch(() => ({}))
-    : {};
-  if (!res.ok) {
-    throw {
-      message:
-        (data as { message?: string }).message ??
-        `Request failed (${res.status})`,
-      fields: (data as { fields?: Record<string, string> }).fields,
-    } satisfies AuthApiError;
-  }
-  return data as T;
-}
-
 export async function listBlogs(
   token: string | null,
   params?: { published_only?: boolean; skip?: number; limit?: number }
@@ -61,10 +39,11 @@ export async function listBlogs(
   if (params?.skip !== undefined) search.set("skip", String(params.skip));
   if (params?.limit !== undefined) search.set("limit", String(params.limit));
 
-  const res = await fetch(`${API_BASE_URL}/api/v1/blog?${search}`, {
-    headers: authHeaders(token),
-  });
-  const data = await handle<BlogPost[] | { posts: BlogPost[] }>(res);
+  const qs = search.toString();
+  const data = await apiFetch<BlogPost[] | { posts: BlogPost[] }>(
+    `/api/v1/blog${qs ? `?${qs}` : ""}`,
+    token,
+  );
   return Array.isArray(data) ? data : (data.posts ?? []);
 }
 
@@ -72,22 +51,14 @@ export async function getBlog(
   token: string | null,
   id: string,
 ): Promise<BlogPost> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/blog/${id}`, {
-    headers: authHeaders(token),
-  });
-  return handle<BlogPost>(res);
+  return apiFetch<BlogPost>(`/api/v1/blog/${id}`, token);
 }
 
 export async function createBlog(
   token: string | null,
   input: BlogInput,
 ): Promise<BlogPost> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/blog`, {
-    method: "POST",
-    headers: authHeaders(token),
-    body: JSON.stringify(input),
-  });
-  return handle<BlogPost>(res);
+  return apiFetch<BlogPost>("/api/v1/blog", token, { method: "POST", body: input });
 }
 
 export async function updateBlog(
@@ -95,23 +66,14 @@ export async function updateBlog(
   id: string,
   input: Partial<BlogInput>,
 ): Promise<BlogPost> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/blog/${id}`, {
-    method: "PATCH",
-    headers: authHeaders(token),
-    body: JSON.stringify(input),
-  });
-  return handle<BlogPost>(res);
+  return apiFetch<BlogPost>(`/api/v1/blog/${id}`, token, { method: "PATCH", body: input });
 }
 
 export async function deleteBlog(
   token: string | null,
   id: string,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/blog/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(token),
-  });
-  if (!res.ok && res.status !== 204) await handle(res);
+  await apiFetch(`/api/v1/blog/${id}`, token, { method: "DELETE" });
 }
 
 /**

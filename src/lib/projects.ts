@@ -1,4 +1,4 @@
-import { API_BASE_URL, type AuthApiError } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth";
 
 export type ProjectStatus = "published" | "draft";
 
@@ -43,6 +43,13 @@ export type Project = {
   meta_description?: string | null;
 };
 
+function normalizeTechnologies(techs: unknown): string[] {
+  if (!Array.isArray(techs)) return [];
+  return techs.map((t) =>
+    typeof t === "string" ? t : t?.name ?? String(t),
+  );
+}
+
 export function normalizeProject(raw: Project): Project {
   return {
     ...raw,
@@ -50,7 +57,29 @@ export function normalizeProject(raw: Project): Project {
     githubUrl: raw.githubUrl ?? raw.github_url ?? null,
     liveDemoUrl: raw.liveDemoUrl ?? raw.demo_url ?? null,
     thumbnailUrl: raw.thumbnailUrl ?? raw.thumbnail ?? null,
-    technologies: raw.technologies ?? raw.technologies_detail?.map((t) => t.name) ?? [],
+    technologies: normalizeTechnologies(raw.technologies) ||
+      normalizeTechnologies(raw.technologies_detail?.map((t) => t.name)) ||
+      [],
+  };
+}
+
+function toSnakeCasePayload(input: Record<string, unknown>): Record<string, unknown> {
+  return {
+    title: input.title,
+    slug: input.slug,
+    description: input.shortDescription,
+    problem: input.problem,
+    solution: input.solution,
+    architecture: input.architecture,
+    results: input.results,
+    technologies: input.technologies,
+    github_url: input.githubUrl,
+    demo_url: input.liveDemoUrl,
+    category: input.category,
+    tags: input.tags,
+    featured: input.featured,
+    screenshots: input.screenshots,
+    published: input.published,
   };
 }
 
@@ -71,33 +100,8 @@ export type CreateProjectInput = {
   screenshots?: string[];
 };
 
-function authHeaders(token: string | null): HeadersInit {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) h.Authorization = `Bearer ${token}`;
-  return h;
-}
-
-async function handle<T>(res: Response): Promise<T> {
-  const ct = res.headers.get("content-type") ?? "";
-  const data = ct.includes("application/json")
-    ? await res.json().catch(() => ({}))
-    : {};
-  if (!res.ok) {
-    throw {
-      message:
-        (data as { message?: string }).message ??
-        `Request failed (${res.status})`,
-      fields: (data as { fields?: Record<string, string> }).fields,
-    } satisfies AuthApiError;
-  }
-  return data as T;
-}
-
 export async function listProjects(token: string | null): Promise<Project[]> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/projects`, {
-    headers: authHeaders(token),
-  });
-  const data = await handle<Project[] | { projects: Project[] }>(res);
+  const data = await apiFetch<Project[] | { projects: Project[] }>("/api/v1/projects", token);
   const projects = Array.isArray(data) ? data : (data.projects ?? []);
   return projects.map(normalizeProject);
 }
@@ -106,22 +110,21 @@ export async function createProject(
   token: string | null,
   input: CreateProjectInput,
 ): Promise<Project> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/projects`, {
+  const data = await apiFetch<Project | { project: Project }>("/api/v1/projects", token, {
     method: "POST",
-    headers: authHeaders(token),
-    body: JSON.stringify(input),
+    body: toSnakeCasePayload(input as unknown as Record<string, unknown>),
   });
-  return normalizeProject(await handle<Project>(res));
+  const project = data && "project" in data ? (data as { project: Project }).project : data as Project;
+  return normalizeProject(project);
 }
 
 export async function getProject(
   token: string | null,
   id: string,
 ): Promise<Project> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
-    headers: authHeaders(token),
-  });
-  return normalizeProject(await handle<Project>(res));
+  const data = await apiFetch<Project | { project: Project }>(`/api/v1/projects/${id}`, token);
+  const project = data && "project" in data ? (data as { project: Project }).project : data as Project;
+  return normalizeProject(project);
 }
 
 export async function updateProject(
@@ -129,34 +132,46 @@ export async function updateProject(
   id: string,
   input: Partial<CreateProjectInput> & { published?: boolean },
 ): Promise<Project> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
+  const data = await apiFetch<Project | { project: Project }>(`/api/v1/projects/${id}`, token, {
     method: "PATCH",
-    headers: authHeaders(token),
-    body: JSON.stringify(input),
+    body: toSnakeCasePayload(input as unknown as Record<string, unknown>),
   });
-  return normalizeProject(await handle<Project>(res));
+  const project = data && "project" in data ? (data as { project: Project }).project : data as Project;
+  return normalizeProject(project);
 }
 
 export async function deleteProject(
   token: string | null,
   id: string,
 ): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/projects/${id}`, {
-    method: "DELETE",
-    headers: authHeaders(token),
-  });
-  if (!res.ok && res.status !== 204) await handle(res);
+  await apiFetch(`/api/v1/projects/${id}`, token, { method: "DELETE" });
 }
 
 export async function generateProjectSummary(
   token: string | null,
   id: string,
 ): Promise<{ shortDescription?: string; architecture?: string; solution?: string; problem?: string; results?: string }> {
-  const res = await fetch(
-    `${API_BASE_URL}/api/v1/projects/${id}/generate-summary`,
-    { method: "POST", headers: authHeaders(token) },
-  );
-  return handle(res);
+  return apiFetch(`/api/v1/projects/${id}/generate-summary`, token, { method: "POST" });
+}
+
+export async function generateFromGithub(
+  token: string | null,
+  githubUrl: string,
+  projectId?: string,
+): Promise<{
+  title: string;
+  description: string;
+  problem: string;
+  solution: string;
+  results: string;
+  architecture: string;
+  technologies: string[];
+  tags: string[];
+}> {
+  return apiFetch("/api/v1/projects/ai-summary", token, {
+    method: "POST",
+    body: { github_url: githubUrl, ...(projectId ? { project_id: projectId } : {}) },
+  });
 }
 
 export function slugify(input: string): string {

@@ -104,36 +104,51 @@ export function useAuth() {
 
 export type AuthApiError = { message: string; fields?: Record<string, string> };
 
+let _redirecting = false;
+
+function redirectToLogin() {
+  if (_redirecting) return;
+  _redirecting = true;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+  window.location.href = "/login";
+}
+
 function getAuthHeaders(token: string | null): HeadersInit {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }
 
-export async function authFetch<T = unknown>(
+export async function apiFetch<T = unknown>(
   path: string,
-  body: unknown,
-  options?: { token?: string | null; method?: "POST" | "GET" | "PATCH" | "DELETE" },
+  token: string | null,
+  options?: { method?: "POST" | "GET" | "PATCH" | "DELETE"; body?: unknown },
 ): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
-  const token = options?.token ?? null;
   let res: Response;
   try {
     res = await fetch(url, {
-      method: options?.method ?? "POST",
+      method: options?.method ?? "GET",
       headers: getAuthHeaders(token),
-      body: options?.method === "GET" ? undefined : JSON.stringify(body),
+      body: options?.method === "GET" ? undefined : JSON.stringify(options?.body),
     });
   } catch {
     throw { message: "Network error. Please try again." } satisfies AuthApiError;
+  }
+
+  if (res.status === 401) {
+    redirectToLogin();
+    throw { message: "Session expired. Redirecting to login…" } satisfies AuthApiError;
   }
 
   const contentType = res.headers.get("content-type") ?? "";
   const data = contentType.includes("application/json")
     ? await res.json().catch(() => ({}))
     : {};
-
-  console.log("API Response:", { path, status: res.status, data });
 
   if (!res.ok) {
     throw {
@@ -143,4 +158,15 @@ export async function authFetch<T = unknown>(
     } satisfies AuthApiError;
   }
   return data as T;
+}
+
+export async function authFetch<T = unknown>(
+  path: string,
+  body: unknown,
+  options?: { token?: string | null; method?: "POST" | "GET" | "PATCH" | "DELETE" },
+): Promise<T> {
+  return apiFetch<T>(path, options?.token ?? null, {
+    method: options?.method ?? "POST",
+    body,
+  });
 }

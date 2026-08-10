@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { authFetch, useAuth, type AuthUser, type AuthApiError } from "@/lib/auth";
+import { getMe } from "@/lib/users";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -87,7 +88,19 @@ function LoginPage() {
       if (!token) {
         throw { message: "Invalid response: token not found in response" } satisfies AuthApiError;
       }
-      setSession({ token, user: data.user ?? { email: parsed.data.email } });
+      const initialUser = data.user ?? { email: parsed.data.email };
+      setSession({ token, user: initialUser });
+      // Fetch full profile to get name if not in login response
+      if (!initialUser?.name) {
+        try {
+          const profile = await getMe(token);
+          if (profile?.name) {
+            setSession({ token, user: { ...initialUser, name: profile.name, username: profile.username } });
+          }
+        } catch {
+          // Profile fetch failed, continue with email-only user
+        }
+      }
       await router.invalidate();
       navigate({ to: "/dashboard" });
     } catch (err) {
