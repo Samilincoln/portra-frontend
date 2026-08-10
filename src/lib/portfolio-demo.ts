@@ -256,7 +256,7 @@ export const DEMO_BLOG: BlogPost[] = [
     tags: ["Performance", "RAG"],
     status: "published",
     published: true,
-    published_at: "2026-06-24",
+    publishedAt: "2026-06-24",
     views: 4820,
     content: `## The wall everyone hits
 
@@ -296,7 +296,7 @@ Treat latency as part of the answer quality metric, not a separate performance t
     tags: ["AI/ML", "Engineering culture"],
     status: "published",
     published: true,
-    published_at: "2026-04-09",
+    publishedAt: "2026-04-09",
     views: 3110,
     content: `## Nobody asks for this
 
@@ -325,7 +325,7 @@ That's the whole point. The harness didn't make the model better. It made *every
     tags: ["Product", "Healthcare"],
     status: "published",
     published: true,
-    published_at: "2026-01-15",
+    publishedAt: "2026-01-15",
     views: 2670,
     content: `## The spec was confident and wrong
 
@@ -354,7 +354,7 @@ Five days of my time. It saved a quarter of building the wrong thing, which is t
     tags: ["PostgreSQL", "Data modeling"],
     status: "published",
     published: true,
-    published_at: "2025-10-27",
+    publishedAt: "2025-10-27",
     views: 5940,
     content: `## Three layers of hope
 
