@@ -126,7 +126,7 @@ export const DEMO_PROJECTS: Project[] = [
       "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&h=750&q=80",
       "https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?auto=format&fit=crop&w=1200&h=750&q=80",
     ],
-    publishedAt: "2025-11-18",
+    published_at: "2025-11-18",
   },
   {
     id: "p2",
@@ -151,7 +151,7 @@ export const DEMO_PROJECTS: Project[] = [
     technologies: ["React", "Node.js", "PostgreSQL", "Redis"],
     tags: ["Product", "Scheduling"],
     githubUrl: "https://github.com",
-    publishedAt: "2025-06-02",
+    published_at: "2025-06-02",
   },
   {
     id: "p3",
@@ -174,7 +174,7 @@ export const DEMO_PROJECTS: Project[] = [
       "Identified a recurring changeover bottleneck worth 6% of weekly output within the first month.",
     technologies: ["Python", "TimescaleDB", "React", "Docker"],
     tags: ["IoT", "Analytics"],
-    publishedAt: "2025-02-14",
+    published_at: "2025-02-14",
   },
   {
     id: "p4",
@@ -197,7 +197,7 @@ export const DEMO_PROJECTS: Project[] = [
       "Grew to 1,200 paying businesses; average days-sales-outstanding fell from 41 to 27.",
     technologies: ["TypeScript", "Next.js", "PostgreSQL", "Stripe"],
     tags: ["Billing", "SaaS"],
-    publishedAt: "2024-09-30",
+    published_at: "2024-09-30",
   },
 ];
 
@@ -256,7 +256,7 @@ export const DEMO_BLOG: BlogPost[] = [
     tags: ["Performance", "RAG"],
     status: "published",
     published: true,
-    publishedAt: "2026-06-24",
+    published_at: "2026-06-24",
     views: 4820,
     content: `## The wall everyone hits
 
@@ -296,7 +296,7 @@ Treat latency as part of the answer quality metric, not a separate performance t
     tags: ["AI/ML", "Engineering culture"],
     status: "published",
     published: true,
-    publishedAt: "2026-04-09",
+    published_at: "2026-04-09",
     views: 3110,
     content: `## Nobody asks for this
 
@@ -325,7 +325,7 @@ That's the whole point. The harness didn't make the model better. It made *every
     tags: ["Product", "Healthcare"],
     status: "published",
     published: true,
-    publishedAt: "2026-01-15",
+    published_at: "2026-01-15",
     views: 2670,
     content: `## The spec was confident and wrong
 
@@ -354,7 +354,7 @@ Five days of my time. It saved a quarter of building the wrong thing, which is t
     tags: ["PostgreSQL", "Data modeling"],
     status: "published",
     published: true,
-    publishedAt: "2025-10-27",
+    published_at: "2025-10-27",
     views: 5940,
     content: `## Three layers of hope
 
