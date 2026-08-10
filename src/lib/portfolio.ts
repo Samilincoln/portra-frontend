@@ -67,25 +67,19 @@ async function portfolioFetch<T>(
   return data as T;
 }
 
-export async function getPortfolio(username: string): Promise<PortfolioProfile> {
-  const demo = await loadDemo();
-  if (demo) return { ...demo.DEMO_PROFILE, username };
-  return portfolioFetch<PortfolioProfile>(
-    `/api/v1/portfolio/${encodeURIComponent(username)}`,
-  );
-
-  async function loadDemo() {
-    const { isDemoUsername, ...rest } = await import("@/lib/portfolio-demo");
-    return isDemoUsername(username)
-      ? (rest as typeof import("@/lib/portfolio-demo"))
-      : null;
-  }
-}
-
 async function demoModule(username: string) {
   const mod = await import("@/lib/portfolio-demo");
   return mod.isDemoUsername(username) ? mod : null;
 }
+
+export async function getPortfolio(username: string): Promise<PortfolioProfile> {
+  const demo = await demoModule(username);
+  if (demo) return { ...demo.DEMO_PROFILE, username };
+  return portfolioFetch<PortfolioProfile>(
+    `/api/v1/portfolio/${encodeURIComponent(username)}`,
+  );
+}
+
 
 export async function getPortfolioProjects(
   username: string,
