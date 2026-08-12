@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 
 import { useAuth } from "@/lib/auth";
+import { useActiveProfile } from "@/lib/active-profile";
 import { slugify, listProjects, type Project } from "@/lib/projects";
 import { AiBlogAssistant } from "@/components/dashboard/AiBlogAssistant";
 
@@ -45,6 +46,7 @@ const schema = z.object({
 
 export function BlogEditor({ existing }: Props) {
   const { token } = useAuth();
+  const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -62,8 +64,8 @@ export function BlogEditor({ existing }: Props) {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
 
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ["projects"],
-    queryFn: () => listProjects(token),
+    queryKey: ["projects", activeProfile?.id],
+    queryFn: () => listProjects(token, activeProfile?.id),
   });
 
   const autoSlug = useMemo(() => slugify(title), [title]);
@@ -78,7 +80,7 @@ export function BlogEditor({ existing }: Props) {
     mutationFn: (input: BlogInput) =>
       existing
         ? updateBlog(token, existing.id, input)
-        : createBlog(token, input),
+        : createBlog(token, input, activeProfile?.id),
     onSuccess: (data) => {
       toast.success(existing ? "Post updated" : "Post created");
       qc.invalidateQueries({ queryKey: ["blogs"] });

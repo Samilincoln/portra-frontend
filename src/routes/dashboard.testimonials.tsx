@@ -38,6 +38,11 @@ import {
   type Testimonial,
   type TestimonialInput,
 } from "@/lib/testimonials";
+import { getMe } from "@/lib/users";
+import { getTier, isAtLimit, type TierId } from "@/lib/plans";
+import { AlertCircle } from "lucide-react";
+import { useActiveProfile } from "@/lib/active-profile";
+import { NoProfileEmptyState } from "@/components/dashboard/NoProfileEmptyState";
 
 export const Route = createFileRoute("/dashboard/testimonials")({
   head: () => ({ meta: [{ title: "Testimonials — Portra" }] }),
@@ -54,13 +59,19 @@ const schema = z.object({
 
 function TestimonialsPage() {
   const { token } = useAuth();
+  const { activeProfile, profiles } = useActiveProfile();
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Testimonial | null>(null);
 
+  const userQuery = useQuery({
+    queryKey: ["user-profile"],
+    queryFn: () => getMe(token),
+  });
+
   const query = useQuery({
-    queryKey: ["testimonials"],
-    queryFn: () => listTestimonials(token),
+    queryKey: ["testimonials", activeProfile?.id],
+    queryFn: () => listTestimonials(token, activeProfile?.id),
   });
 
   const deleteMutation = useMutation({
@@ -75,6 +86,23 @@ function TestimonialsPage() {
   });
 
   const items = query.data ?? [];
+  const tierId = (userQuery.data?.subscriptionTier as TierId) ?? "free";
+  const tier = getTier(tierId);
+  const atLimit = isAtLimit(tierId, "testimonials", items.length);
+
+  if (!activeProfile || profiles.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Testimonials</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Social proof from collaborators, clients, and teammates.
+          </p>
+        </div>
+        <NoProfileEmptyState />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -85,11 +113,32 @@ function TestimonialsPage() {
             Social proof from collaborators, clients, and teammates.
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="gap-1.5">
+        <Button
+          onClick={() => setAddOpen(true)}
+          disabled={atLimit}
+          className="gap-1.5"
+        >
           <Plus className="h-4 w-4" />
           Add testimonial
         </Button>
       </div>
+
+      {atLimit ? (
+        <div className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
+          <AlertCircle className="h-4 w-4 shrink-0 text-accent" />
+          <p className="text-muted-foreground">
+            You've reached the {tier.label} limit of {tier.testimonials} testimonials.{" "}
+            <a
+              href="https://portra.app/pricing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-accent hover:underline"
+            >
+              Upgrade to get more →
+            </a>
+          </p>
+        </div>
+      ) : null}
 
       {query.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -222,6 +271,7 @@ function AddTestimonialDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const { token } = useAuth();
+  const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const [form, setForm] = useState<TestimonialInput>({
     author: "",
@@ -233,7 +283,7 @@ function AddTestimonialDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
-    mutationFn: (input: TestimonialInput) => createTestimonial(token, input),
+    mutationFn: (input: TestimonialInput) => createTestimonial(token, input, activeProfile?.id),
     onSuccess: () => {
       toast.success("Testimonial added");
       qc.invalidateQueries({ queryKey: ["testimonials"] });

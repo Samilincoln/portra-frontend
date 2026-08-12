@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiFetch } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/auth";
 import type { Project } from "@/lib/projects";
 import type { Skill } from "@/lib/skills";
 import type { Experience } from "@/lib/experiences";
@@ -6,7 +6,7 @@ import type { BlogPost } from "@/lib/blog";
 import type { Testimonial } from "@/lib/testimonials";
 
 export class PortfolioNotFoundError extends Error {
-  constructor(message = "Portfolio not found") {
+  constructor(message: string = "Portfolio not found") {
     super(message);
     this.name = "PortfolioNotFoundError";
   }
@@ -14,6 +14,7 @@ export class PortfolioNotFoundError extends Error {
 
 export type PortfolioProfile = {
   username: string;
+  profileSlug?: string;
   name: string;
   headline?: string;
   bio?: string;
@@ -31,11 +32,18 @@ export type PortfolioProfile = {
   experiences?: Experience[];
 };
 
+function resolveUrl(path: string): string {
+  if (typeof window === "undefined" && API_BASE_URL) {
+    return `${API_BASE_URL}${path}`;
+  }
+  return path;
+}
+
 async function portfolioFetch<T>(
   path: string,
   options?: { method?: "GET" | "POST"; body?: unknown },
 ): Promise<T> {
-  const url = `${API_BASE_URL}${path}`;
+  const url = resolveUrl(path);
   let res: Response;
   try {
     res = await fetch(url, {
@@ -72,28 +80,34 @@ async function demoModule(username: string) {
   return mod.isDemoUsername(username) ? mod : null;
 }
 
-export async function getPortfolio(username: string): Promise<PortfolioProfile> {
-  const demo = await demoModule(username);
-  if (demo) return { ...demo.DEMO_PROFILE, username };
-  return portfolioFetch<PortfolioProfile>(
-    `/api/v1/portfolio/${encodeURIComponent(username)}`,
-  );
+function profileBase(username: string, profileSlug: string) {
+  return `/api/v1/portfolio/public/${encodeURIComponent(username)}/${encodeURIComponent(profileSlug)}`;
 }
 
+export async function getPortfolio(
+  username: string,
+  profileSlug: string,
+): Promise<PortfolioProfile> {
+  const demo = await demoModule(username);
+  if (demo) return { ...demo.DEMO_PROFILE, username };
+  return portfolioFetch<PortfolioProfile>(profileBase(username, profileSlug));
+}
 
 export async function getPortfolioProjects(
   username: string,
+  profileSlug: string,
 ): Promise<Project[]> {
   const demo = await demoModule(username);
   if (demo) return demo.DEMO_PROJECTS;
   const data = await portfolioFetch<Project[] | { projects: Project[] }>(
-    `/api/v1/portfolio/${encodeURIComponent(username)}/projects`,
+    `${profileBase(username, profileSlug)}/projects`,
   );
   return Array.isArray(data) ? data : (data.projects ?? []);
 }
 
 export async function getPortfolioProject(
   username: string,
+  profileSlug: string,
   slug: string,
 ): Promise<Project> {
   const demo = await demoModule(username);
@@ -103,45 +117,49 @@ export async function getPortfolioProject(
     return found;
   }
   return portfolioFetch<Project>(
-    `/api/v1/portfolio/${encodeURIComponent(username)}/projects/${encodeURIComponent(slug)}`,
+    `${profileBase(username, profileSlug)}/projects/${encodeURIComponent(slug)}`,
   );
 }
 
 export async function getPortfolioExperiences(
   username: string,
+  profileSlug: string,
 ): Promise<Experience[]> {
   const demo = await demoModule(username);
   if (demo) return demo.DEMO_EXPERIENCES;
   const data = await portfolioFetch<Experience[] | { experiences: Experience[] }>(
-    `/api/v1/portfolio/${encodeURIComponent(username)}/experience`,
+    `${profileBase(username, profileSlug)}/experiences`,
   );
   return Array.isArray(data) ? data : (data.experiences ?? []);
 }
 
 export async function getPortfolioTestimonials(
   username: string,
+  profileSlug: string,
 ): Promise<Testimonial[]> {
   const demo = await demoModule(username);
   if (demo) return demo.DEMO_TESTIMONIALS;
   const data = await portfolioFetch<Testimonial[] | { testimonials: Testimonial[] }>(
-    `/api/v1/portfolio/${encodeURIComponent(username)}/testimonials`,
+    `${profileBase(username, profileSlug)}/testimonials`,
   );
   return Array.isArray(data) ? data : (data.testimonials ?? []);
 }
 
 export async function getPortfolioBlog(
   username: string,
+  profileSlug: string,
 ): Promise<BlogPost[]> {
   const demo = await demoModule(username);
   if (demo) return demo.DEMO_BLOG;
   const data = await portfolioFetch<BlogPost[] | { posts: BlogPost[] }>(
-    `/api/v1/portfolio/${encodeURIComponent(username)}/blog`,
+    `${profileBase(username, profileSlug)}/blog`,
   );
   return Array.isArray(data) ? data : (data.posts ?? []);
 }
 
 export async function getPortfolioBlogPost(
   username: string,
+  profileSlug: string,
   slug: string,
 ): Promise<BlogPost> {
   const demo = await demoModule(username);
@@ -151,7 +169,7 @@ export async function getPortfolioBlogPost(
     return found;
   }
   return portfolioFetch<BlogPost>(
-    `/api/v1/portfolio/${encodeURIComponent(username)}/blog/${encodeURIComponent(slug)}`,
+    `${profileBase(username, profileSlug)}/blog/${encodeURIComponent(slug)}`,
   );
 }
 
@@ -159,13 +177,13 @@ export type ContactInput = { name: string; email: string; message: string };
 
 export async function submitContact(
   username: string,
+  profileSlug: string,
   input: ContactInput,
 ): Promise<{ ok: true }> {
   const demo = await demoModule(username);
   if (demo) return { ok: true };
   return portfolioFetch<{ ok: true }>(
-    `/api/v1/portfolio/${encodeURIComponent(username)}/contact`,
+    `${profileBase(username, profileSlug)}/contact`,
     { method: "POST", body: input },
   );
 }
-

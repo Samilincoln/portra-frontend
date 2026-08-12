@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AppShell } from "@/components/layouts/AppShell";
 import { useAuth } from "@/lib/auth";
+import { ActiveProfileProvider } from "@/lib/active-profile";
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardLayout,
@@ -26,8 +27,10 @@ function DashboardLayout() {
   }
 
   return (
-    <AppShell>
-      <Outlet />
-    </AppShell>
+    <ActiveProfileProvider>
+      <AppShell>
+        <Outlet />
+      </AppShell>
+    </ActiveProfileProvider>
   );
 }

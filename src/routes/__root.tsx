@@ -114,6 +114,22 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                var mode = localStorage.getItem("portra:mode");
+                var palette = localStorage.getItem("portra:palette");
+                if (mode === "dark" || (!mode && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+                  document.documentElement.classList.add("dark");
+                }
+                if (palette === "paper" || palette === "graphite") {
+                  document.documentElement.dataset.theme = palette;
+                }
+              })();
+            `,
+          }}
+        />
         <HeadContent />
       </head>
       <body>

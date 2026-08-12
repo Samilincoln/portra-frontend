@@ -100,8 +100,17 @@ export type CreateProjectInput = {
   screenshots?: string[];
 };
 
-export async function listProjects(token: string | null): Promise<Project[]> {
-  const data = await apiFetch<Project[] | { projects: Project[] }>("/api/v1/projects", token);
+export async function listProjects(
+  token: string | null,
+  profileId?: string,
+): Promise<Project[]> {
+  const params = new URLSearchParams();
+  if (profileId) params.set("profile_id", profileId);
+  const qs = params.toString();
+  const data = await apiFetch<Project[] | { projects: Project[] }>(
+    `/api/v1/projects${qs ? `?${qs}` : ""}`,
+    token,
+  );
   const projects = Array.isArray(data) ? data : (data.projects ?? []);
   return projects.map(normalizeProject);
 }
@@ -109,11 +118,19 @@ export async function listProjects(token: string | null): Promise<Project[]> {
 export async function createProject(
   token: string | null,
   input: CreateProjectInput,
+  profileId?: string,
 ): Promise<Project> {
-  const data = await apiFetch<Project | { project: Project }>("/api/v1/projects", token, {
-    method: "POST",
-    body: toSnakeCasePayload(input as unknown as Record<string, unknown>),
-  });
+  const params = new URLSearchParams();
+  if (profileId) params.set("profile_id", profileId);
+  const qs = params.toString();
+  const data = await apiFetch<Project | { project: Project }>(
+    `/api/v1/projects${qs ? `?${qs}` : ""}`,
+    token,
+    {
+      method: "POST",
+      body: toSnakeCasePayload(input as unknown as Record<string, unknown>),
+    },
+  );
   const project = data && "project" in data ? (data as { project: Project }).project : data as Project;
   return normalizeProject(project);
 }

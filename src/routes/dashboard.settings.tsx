@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Moon, Palette, Sun, Trash2, Upload } from "lucide-react";
+import { Loader2, Moon, Palette, Sun, Trash2, Upload, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ import { deleteMe, getMe, updateMe, type UserProfile } from "@/lib/users";
 import { PALETTES, useTheme, type PaletteId } from "@/lib/theme";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfilesTab } from "@/components/dashboard/ProfilesTab";
 
 export const Route = createFileRoute("/dashboard/settings")({
   head: () => ({ meta: [{ title: "Settings — Portra" }] }),
@@ -71,12 +72,19 @@ function SettingsPage() {
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="profiles" className="gap-1.5">
+            <Users className="h-3.5 w-3.5" />
+            Profiles
+          </TabsTrigger>
           <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
           <ProfileTab profile={profile} onSaved={() => qc.invalidateQueries({ queryKey: ["me"] })} />
+        </TabsContent>
+        <TabsContent value="profiles">
+          <ProfilesTab />
         </TabsContent>
         <TabsContent value="portfolio">
           <PortfolioTab profile={profile} onSaved={() => qc.invalidateQueries({ queryKey: ["me"] })} />

@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useActiveProfile } from "@/lib/active-profile";
 import { getDashboardStats, type DashboardStats } from "@/lib/dashboard";
 import { getMe } from "@/lib/users";
 import {
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/dashboard/")({
 
 function DashboardHome() {
   const { user, token } = useAuth();
+  const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const greeting = user?.name?.split(" ")[0] ?? "there";
 
@@ -205,13 +207,30 @@ function DashboardHome() {
           <QuickAction to="/dashboard/projects" icon={Plus} label="Add Project" />
           <QuickAction to="/dashboard/blog" icon={Plus} label="Add Blog Post" />
           <QuickAction to="/dashboard/experience" icon={Briefcase} label="Add Experience" />
-          <QuickAction
-            to="/p/$username"
-            params={{ username: username || "me" }}
-            icon={ExternalLink}
-            label="View Public Portfolio"
-            tone="accent"
-          />
+          {username && activeProfile?.slug ? (
+            <QuickAction
+              to="/p/$username/$profileSlug"
+              params={{ username, profileSlug: activeProfile.slug }}
+              icon={ExternalLink}
+              label="View Public Portfolio"
+              tone="accent"
+            />
+          ) : username ? (
+            <QuickAction
+              to="/p/$username"
+              params={{ username }}
+              icon={ExternalLink}
+              label="View Public Portfolio"
+              tone="accent"
+            />
+          ) : (
+            <QuickAction
+              to="/dashboard/settings"
+              icon={ExternalLink}
+              label="Set Username to Preview"
+              tone="accent"
+            />
+          )}
         </div>
       </section>
     </div>
@@ -225,8 +244,8 @@ function QuickAction({
   label,
   tone = "default",
 }: {
-  to: "/dashboard/projects" | "/dashboard/blog" | "/dashboard/experience" | "/p/$username";
-  params?: { username: string };
+  to: "/dashboard/projects" | "/dashboard/blog" | "/dashboard/experience" | "/dashboard/settings" | "/p/$username" | "/p/$username/$profileSlug";
+  params?: { username: string; profileSlug?: string };
   icon: LucideIcon;
   label: string;
   tone?: "default" | "accent";

@@ -39,6 +39,10 @@ import { getMe } from "@/lib/users";
 import { AddProjectDialog } from "@/components/dashboard/AddProjectDialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { getTier, isAtLimit, type TierId } from "@/lib/plans";
+import { AlertCircle, ExternalLink } from "lucide-react";
+import { useActiveProfile } from "@/lib/active-profile";
+import { NoProfileEmptyState } from "@/components/dashboard/NoProfileEmptyState";
 
 export const Route = createFileRoute("/dashboard/projects/")({
   head: () => ({ meta: [{ title: "Projects — Portra" }] }),
@@ -49,6 +53,7 @@ type StatusFilter = "all" | "published" | "draft";
 
 function ProjectsPage() {
   const { token } = useAuth();
+  const { activeProfile, profiles } = useActiveProfile();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [addOpen, setAddOpen] = useState(false);
@@ -60,8 +65,8 @@ function ProjectsPage() {
   });
 
   const query = useQuery({
-    queryKey: ["projects"],
-    queryFn: () => listProjects(token),
+    queryKey: ["projects", activeProfile?.id],
+    queryFn: () => listProjects(token, activeProfile?.id),
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
@@ -74,6 +79,11 @@ function ProjectsPage() {
     },
     onError: () => toast.error("Could not delete project"),
   });
+
+  const tierId = (userQuery.data?.subscriptionTier as TierId) ?? "free";
+  const tier = getTier(tierId);
+  const projectCount = query.data?.length ?? 0;
+  const atLimit = isAtLimit(tierId, "projects", projectCount);
 
   const filtered = useMemo(() => {
     const list = query.data ?? [];
@@ -92,6 +102,20 @@ function ProjectsPage() {
 
   const username = userQuery.data?.username ?? "";
 
+  if (!activeProfile || profiles.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Projects</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Case studies and builds featured on your portfolio.
+          </p>
+        </div>
+        <NoProfileEmptyState />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -101,11 +125,32 @@ function ProjectsPage() {
             Case studies and builds featured on your portfolio.
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="gap-1.5">
+        <Button
+          onClick={() => setAddOpen(true)}
+          disabled={atLimit}
+          className="gap-1.5"
+        >
           <Plus className="h-4 w-4" />
           Add project
         </Button>
       </div>
+
+      {atLimit ? (
+        <div className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
+          <AlertCircle className="h-4 w-4 shrink-0 text-accent" />
+          <p className="text-muted-foreground">
+            You've reached the {tier.label} limit of {tier.projects} projects.{" "}
+            <a
+              href="https://portra.app/pricing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-accent hover:underline"
+            >
+              Upgrade to get more →
+            </a>
+          </p>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[240px]">
@@ -148,6 +193,7 @@ function ProjectsPage() {
                 key={project.id}
                 project={project}
                 username={username}
+                activeProfile={activeProfile}
                 onDelete={deleteMutation.mutate}
               />
             ))}
@@ -172,10 +218,12 @@ function ProjectsPage() {
 function ProjectActionsMenu({
   project,
   username,
+  activeProfile,
   onDelete,
 }: {
   project: Project;
   username: string;
+  activeProfile: { slug: string } | null;
   onDelete: (id: string) => void;
 }) {
   return (
@@ -197,11 +245,11 @@ function ProjectActionsMenu({
             Edit
           </Link>
         </DropdownMenuItem>
-        {username && (
+        {username && activeProfile && (
           <DropdownMenuItem asChild>
             <Link
-              to="/p/$username/projects/$slug"
-              params={{ username, slug: project.slug }}
+              to="/p/$username/$profileSlug/projects/$slug"
+              params={{ username, profileSlug: activeProfile.slug, slug: project.slug }}
               className="flex items-center gap-2"
               onClick={(e) => e.stopPropagation()}
             >
@@ -247,10 +295,12 @@ function NewProjectCard({ onAdd }: { onAdd: () => void }) {
 function ProjectCard({
   project,
   username,
+  activeProfile,
   onDelete,
 }: {
   project: Project;
   username: string;
+  activeProfile: { slug: string } | null;
   onDelete: (id: string) => void;
 }) {
   const published = project.status === "published";
@@ -308,6 +358,7 @@ function ProjectCard({
           <ProjectActionsMenu
             project={project}
             username={username}
+            activeProfile={activeProfile}
             onDelete={onDelete}
           />
         </div>

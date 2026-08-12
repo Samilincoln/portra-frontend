@@ -32,12 +32,13 @@ export type BlogInput = {
 
 export async function listBlogs(
   token: string | null,
-  params?: { published_only?: boolean; skip?: number; limit?: number }
+  params?: { published_only?: boolean; skip?: number; limit?: number; profileId?: string }
 ): Promise<BlogPost[]> {
   const search = new URLSearchParams();
   if (params?.published_only !== undefined) search.set("published_only", String(params.published_only));
   if (params?.skip !== undefined) search.set("skip", String(params.skip));
   if (params?.limit !== undefined) search.set("limit", String(params.limit));
+  if (params?.profileId) search.set("profile_id", params.profileId);
 
   const qs = search.toString();
   const data = await apiFetch<BlogPost[] | { posts: BlogPost[] }>(
@@ -57,8 +58,16 @@ export async function getBlog(
 export async function createBlog(
   token: string | null,
   input: BlogInput,
+  profileId?: string,
 ): Promise<BlogPost> {
-  return apiFetch<BlogPost>("/api/v1/blog", token, { method: "POST", body: input });
+  const params = new URLSearchParams();
+  if (profileId) params.set("profile_id", profileId);
+  const qs = params.toString();
+  return apiFetch<BlogPost>(
+    `/api/v1/blog${qs ? `?${qs}` : ""}`,
+    token,
+    { method: "POST", body: input },
+  );
 }
 
 export async function updateBlog(

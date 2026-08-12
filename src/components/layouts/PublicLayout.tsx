@@ -1,8 +1,11 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ArrowLeft } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
 export function PublicLayout({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="border-b border-border">
@@ -14,15 +17,27 @@ export function PublicLayout({ children }: { children: ReactNode }) {
             <span className="text-lg font-semibold tracking-tight">Portra</span>
           </Link>
           <nav className="flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            <Link to="/login" className="hover:text-foreground">
-              Log in
-            </Link>
-            <Link
-              to="/signup"
-              className="rounded-lg bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
-            >
-              Get started
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-1.5 hover:text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="hover:text-foreground">
+                  Log in
+                </Link>
+                <Link
+                  to="/signup"
+                  className="rounded-lg bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
+                >
+                  Get started
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>

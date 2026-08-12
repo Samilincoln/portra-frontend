@@ -63,6 +63,11 @@ import {
   type SkillLevel,
 } from "@/lib/skills";
 import { cn } from "@/lib/utils";
+import { getMe } from "@/lib/users";
+import { getTier, isAtLimit, type TierId } from "@/lib/plans";
+import { AlertCircle } from "lucide-react";
+import { useActiveProfile } from "@/lib/active-profile";
+import { NoProfileEmptyState } from "@/components/dashboard/NoProfileEmptyState";
 
 export const Route = createFileRoute("/dashboard/experience")({
   head: () => ({ meta: [{ title: "Experience & Skills — Portra" }] }),
@@ -80,6 +85,24 @@ const DEFAULT_SKILL_CATEGORIES = [
 ];
 
 function ExperiencePage() {
+  const { activeProfile, profiles } = useActiveProfile();
+
+  if (!activeProfile || profiles.length === 0) {
+    return (
+      <div className="space-y-10">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Experience & Skills
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Curate your career timeline and highlight the tools you specialize in.
+          </p>
+        </div>
+        <NoProfileEmptyState />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-10">
       <div>
@@ -130,14 +153,20 @@ const emptyExp: ExpForm = {
 
 function ExperienceSection() {
   const { token } = useAuth();
+  const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const [panelOpen, setPanelOpen] = useState(false);
   const [editing, setEditing] = useState<Experience | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Experience | null>(null);
 
+  const userQuery = useQuery({
+    queryKey: ["user-profile"],
+    queryFn: () => getMe(token),
+  });
+
   const query = useQuery({
-    queryKey: ["experiences"],
-    queryFn: () => listExperiences(token),
+    queryKey: ["experiences", activeProfile?.id],
+    queryFn: () => listExperiences(token, { profileId: activeProfile?.id }),
   });
 
   const sorted = useMemo(() => {
@@ -160,6 +189,10 @@ function ExperienceSection() {
       toast.error(err?.message ?? "Could not delete"),
   });
 
+  const tierId = (userQuery.data?.subscriptionTier as TierId) ?? "free";
+  const tier = getTier(tierId);
+  const atLimit = isAtLimit(tierId, "experiences", sorted.length);
+
   function openAdd() {
     setEditing(null);
     setPanelOpen(true);
@@ -179,11 +212,28 @@ function ExperienceSection() {
             Tell your story in reverse chronological order.
           </p>
         </div>
-        <Button onClick={openAdd} className="gap-1.5">
+        <Button onClick={openAdd} disabled={atLimit} className="gap-1.5">
           <Plus className="h-4 w-4" />
           Add experience
         </Button>
       </div>
+
+      {atLimit ? (
+        <div className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
+          <AlertCircle className="h-4 w-4 shrink-0 text-accent" />
+          <p className="text-muted-foreground">
+            You've reached the {tier.label} limit of {tier.experiences} experiences.{" "}
+            <a
+              href="https://portra.app/pricing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-accent hover:underline"
+            >
+              Upgrade to get more →
+            </a>
+          </p>
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
         {query.isLoading ? (
@@ -338,6 +388,7 @@ function ExperiencePanel({
   editing: Experience | null;
 }) {
   const { token } = useAuth();
+  const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const [form, setForm] = useState<ExpForm>(emptyExp);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -364,7 +415,7 @@ function ExperiencePanel({
     mutationFn: (input: ExperienceInput) =>
       editing
         ? updateExperience(token, editing.id, input)
-        : createExperience(token, input),
+        : createExperience(token, input, activeProfile?.id),
     onSuccess: () => {
       toast.success(editing ? "Experience updated" : "Experience added");
       qc.invalidateQueries({ queryKey: ["experiences"] });
@@ -538,6 +589,7 @@ const LEVEL_STYLE: Record<SkillLevel, string> = {
 
 function SkillsSection() {
   const { token } = useAuth();
+  const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [category, setCategory] = useState(DEFAULT_SKILL_CATEGORIES[0]);
@@ -545,9 +597,14 @@ function SkillsSection() {
   const [customCategory, setCustomCategory] = useState("");
   const [useCustom, setUseCustom] = useState(false);
 
+  const userQuery = useQuery({
+    queryKey: ["user-profile"],
+    queryFn: () => getMe(token),
+  });
+
   const query = useQuery({
-    queryKey: ["skills"],
-    queryFn: () => listSkills(token),
+    queryKey: ["skills", activeProfile?.id],
+    queryFn: () => listSkills(token, activeProfile?.id),
   });
 
   const grouped = useMemo(() => {
@@ -560,13 +617,18 @@ function SkillsSection() {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [query.data]);
 
+  const tierId = (userQuery.data?.subscriptionTier as TierId) ?? "free";
+  const tier = getTier(tierId);
+  const skillCount = query.data?.length ?? 0;
+  const atSkillLimit = isAtLimit(tierId, "skills", skillCount);
+
   const addMutation = useMutation({
     mutationFn: () =>
       createSkill(token, {
         name: name.trim(),
         category: (useCustom ? customCategory.trim() : category) || "Other",
         level,
-      }),
+      }, activeProfile?.id),
     onSuccess: () => {
       toast.success("Skill added");
       setName("");
@@ -667,7 +729,11 @@ function SkillsSection() {
               ))}
             </SelectContent>
           </Select>
-          <Button type="submit" disabled={addMutation.isPending} className="gap-1.5">
+          <Button
+            type="submit"
+            disabled={addMutation.isPending || atSkillLimit}
+            className="gap-1.5"
+          >
             {addMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -676,6 +742,23 @@ function SkillsSection() {
             Add
           </Button>
         </form>
+
+        {atSkillLimit ? (
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
+            <AlertCircle className="h-4 w-4 shrink-0 text-accent" />
+            <p className="text-muted-foreground">
+              You've reached the {tier.label} limit of {tier.skills} skills.{" "}
+              <a
+                href="https://portra.app/pricing"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-accent hover:underline"
+              >
+                Upgrade to get more →
+              </a>
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-6 space-y-6">
           {query.isLoading ? (

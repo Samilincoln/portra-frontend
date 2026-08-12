@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { useAuth } from "@/lib/auth";
+import { useActiveProfile } from "@/lib/active-profile";
 import {
   createProject,
   generateFromGithub,
@@ -69,11 +70,6 @@ const schema = z.object({
 
 type FieldErrors = Partial<Record<keyof CreateProjectInput, string>>;
 
-type Props = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-};
-
 const emptyState = {
   title: "",
   slug: "",
@@ -92,8 +88,9 @@ const emptyState = {
   screenshots: [] as { name: string; url: string }[],
 };
 
-export function AddProjectDialog({ open, onOpenChange }: Props) {
+export function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { token } = useAuth();
+  const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const [form, setForm] = useState(emptyState);
   const [techInput, setTechInput] = useState("");
@@ -166,7 +163,7 @@ export function AddProjectDialog({ open, onOpenChange }: Props) {
   }
 
   const mutation = useMutation({
-    mutationFn: (input: CreateProjectInput) => createProject(token, input),
+    mutationFn: (input: CreateProjectInput) => createProject(token, input, activeProfile?.id),
     onSuccess: () => {
       toast.success("Project created");
       qc.invalidateQueries({ queryKey: ["projects"] });

@@ -18,6 +18,11 @@ import { cn } from "@/lib/utils";
 
 import { useAuth } from "@/lib/auth";
 import { listBlogs, type BlogPost } from "@/lib/blog";
+import { getMe } from "@/lib/users";
+import { getTier, isAtLimit, type TierId } from "@/lib/plans";
+import { AlertCircle } from "lucide-react";
+import { useActiveProfile } from "@/lib/active-profile";
+import { NoProfileEmptyState } from "@/components/dashboard/NoProfileEmptyState";
 
 export const Route = createFileRoute("/dashboard/blog/")({
   head: () => ({
@@ -44,12 +49,18 @@ type StatusFilter = "all" | "published" | "draft";
 
 function BlogListPage() {
   const { token } = useAuth();
+  const { activeProfile, profiles } = useActiveProfile();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
 
+  const userQuery = useQuery({
+    queryKey: ["user-profile"],
+    queryFn: () => getMe(token),
+  });
+
   const query = useQuery({
-    queryKey: ["blogs"],
-    queryFn: () => listBlogs(token),
+    queryKey: ["blogs", activeProfile?.id],
+    queryFn: () => listBlogs(token, { profileId: activeProfile?.id }),
   });
 
   const filtered = useMemo(() => {
@@ -69,6 +80,25 @@ function BlogListPage() {
   const drafts = filtered.filter((p) => p.status !== "published");
   const published = filtered.filter((p) => p.status === "published");
 
+  const tierId = (userQuery.data?.subscriptionTier as TierId) ?? "free";
+  const tier = getTier(tierId);
+  const blogCount = query.data?.length ?? 0;
+  const atLimit = isAtLimit(tierId, "blogPosts", blogCount);
+
+  if (!activeProfile || profiles.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Blog</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Write essays, deep-dives, and technical notes.
+          </p>
+        </div>
+        <NoProfileEmptyState />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -78,12 +108,29 @@ function BlogListPage() {
             Write essays, deep-dives, and technical notes.
           </p>
         </div>
-        <Button asChild className="gap-1.5">
+        <Button asChild className="gap-1.5" disabled={atLimit}>
           <Link to="/dashboard/blog/new">
             <Plus className="h-4 w-4" /> New post
           </Link>
         </Button>
       </div>
+
+      {atLimit ? (
+        <div className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
+          <AlertCircle className="h-4 w-4 shrink-0 text-accent" />
+          <p className="text-muted-foreground">
+            You've reached the {tier.label} limit of {tier.blogPosts} blog posts.{" "}
+            <a
+              href="https://portra.app/pricing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-accent hover:underline"
+            >
+              Upgrade to get more →
+            </a>
+          </p>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[240px]">

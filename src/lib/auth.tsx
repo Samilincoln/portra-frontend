@@ -128,7 +128,9 @@ export async function apiFetch<T = unknown>(
   token: string | null,
   options?: { method?: "POST" | "GET" | "PATCH" | "DELETE"; body?: unknown },
 ): Promise<T> {
-  const url = `${API_BASE_URL}${path}`;
+  const url = typeof window === "undefined" && API_BASE_URL
+    ? `${API_BASE_URL}${path}`
+    : path;
   let res: Response;
   try {
     res = await fetch(url, {
@@ -151,9 +153,13 @@ export async function apiFetch<T = unknown>(
     : {};
 
   if (!res.ok) {
+    const detail = (data as { detail?: Array<{ msg?: string; loc?: string[] }> }).detail;
+    const detailMsg = detail?.map((d) => d.msg).join(", ");
     throw {
       message:
-        (data as { message?: string }).message ?? `Request failed (${res.status})`,
+        detailMsg ??
+        (data as { message?: string }).message ??
+        `Request failed (${res.status})`,
       fields: (data as { fields?: Record<string, string> }).fields,
     } satisfies AuthApiError;
   }

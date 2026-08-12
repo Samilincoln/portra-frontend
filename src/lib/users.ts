@@ -23,6 +23,21 @@ export type UserProfile = {
   updatedAt?: string;
 };
 
+function toSnakeCasePayload(input: Record<string, unknown>): Record<string, unknown> {
+  return {
+    name: input.name,
+    email: input.email,
+    bio: input.bio,
+    avatar_url: input.avatarUrl,
+    username: input.username,
+    custom_domain: input.customDomain,
+    theme: input.theme,
+    social: input.social,
+    current_password: input.currentPassword,
+    new_password: input.newPassword,
+  };
+}
+
 export async function getMe(token: string | null): Promise<UserProfile> {
   return apiFetch<UserProfile>("/api/v1/auth/me", token);
 }
@@ -36,7 +51,7 @@ export async function updateMe(
 ): Promise<UserProfile> {
   return apiFetch<UserProfile>("/api/v1/users/me", token, {
     method: "PATCH",
-    body: input,
+    body: toSnakeCasePayload(input as Record<string, unknown>),
   });
 }
 

@@ -45,6 +45,7 @@ import {
   markNotificationRead,
 } from "@/lib/notifications";
 import { NotificationRow } from "@/components/dashboard/NotificationRow";
+import { ProfileSwitcher } from "@/components/dashboard/ProfileSwitcher";
 
 const nav: Array<{
   to:
@@ -116,11 +117,8 @@ function SidebarInner({ pathname, onNavigate }: { pathname: string; onNavigate?:
         <span className="text-lg font-semibold tracking-tight">Portra</span>
       </div>
       <NavList pathname={pathname} onNavigate={onNavigate} />
-      <div className="border-t border-sidebar-border p-4">
-        <div className="rounded-xl bg-sidebar-accent/50 p-3 text-xs text-sidebar-foreground/80">
-          <p className="font-medium text-sidebar-foreground">Portra Pro</p>
-          <p className="mt-1">Unlock custom domains &amp; analytics.</p>
-        </div>
+      <div className="mt-auto border-t border-sidebar-border p-4">
+        <ProfileSwitcher />
       </div>
     </div>
   );
