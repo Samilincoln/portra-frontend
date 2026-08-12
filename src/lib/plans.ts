@@ -17,7 +17,7 @@ export const TIERS = {
   },
   pro: {
     id: "pro",
-    label: "Professional",
+    label: "Pro",
     price: "~$15/mo",
     profiles: 3,
     projects: Infinity,

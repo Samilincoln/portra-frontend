@@ -124,7 +124,7 @@ export function ProfilesTab() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Upgrade to Professional
+                Upgrade to Pro
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </Button>
@@ -191,7 +191,7 @@ export function ProfilesTab() {
                 to="/dashboard/settings"
                 className="font-medium text-accent hover:underline"
               >
-                Upgrade to Professional →
+                Upgrade to Pro →
               </Link>
             ) : null}
           </div>
