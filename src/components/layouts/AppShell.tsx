@@ -17,6 +17,7 @@ import {
   Moon,
   Sun,
   CheckCheck,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import { getMe } from "@/lib/users";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -54,10 +56,12 @@ const nav: Array<{
     | "/dashboard/experience"
     | "/dashboard/testimonials"
     | "/dashboard/blog"
-    | "/dashboard/settings";
+    | "/dashboard/settings"
+    | "/dashboard/admin";
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
+  adminOnly?: boolean;
 }> = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/dashboard/projects", label: "Projects", icon: FolderKanban },
@@ -65,6 +69,7 @@ const nav: Array<{
   { to: "/dashboard/experience", label: "Experience", icon: Briefcase },
   { to: "/dashboard/testimonials", label: "Testimonials", icon: MessageSquareQuote },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },
+  { to: "/dashboard/admin", label: "Admin", icon: Shield, adminOnly: true },
 ];
 
 function initials(name?: string, email?: string) {
@@ -77,37 +82,41 @@ function initials(name?: string, email?: string) {
 function NavList({
   pathname,
   onNavigate,
+  isAdmin,
 }: {
   pathname: string;
   onNavigate?: () => void;
+  isAdmin?: boolean;
 }) {
   return (
     <nav className="flex-1 space-y-1 px-3 py-4">
-      {nav.map((item) => {
-        const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
-        const Icon = item.icon;
-        return (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              active
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-            )}
-          >
-            <Icon className="h-4 w-4" aria-hidden="true" />
-            {item.label}
-          </Link>
-        );
-      })}
+      {nav
+        .filter((item) => !item.adminOnly || isAdmin)
+        .map((item) => {
+          const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                active
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+              )}
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {item.label}
+            </Link>
+          );
+        })}
     </nav>
   );
 }
 
-function SidebarInner({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function SidebarInner({ pathname, onNavigate, isAdmin }: { pathname: string; onNavigate?: () => void; isAdmin?: boolean }) {
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex h-16 items-center gap-2 px-6">
@@ -116,7 +125,7 @@ function SidebarInner({ pathname, onNavigate }: { pathname: string; onNavigate?:
         </div>
         <span className="text-lg font-semibold tracking-tight">Portra</span>
       </div>
-      <NavList pathname={pathname} onNavigate={onNavigate} />
+      <NavList pathname={pathname} onNavigate={onNavigate} isAdmin={isAdmin} />
       <div className="mt-auto border-t border-sidebar-border p-4">
         <ProfileSwitcher />
       </div>
@@ -151,6 +160,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const notifications = notificationsQuery.data ?? [];
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const meQuery = useQuery({
+    queryKey: ["me"],
+    queryFn: () => getMe(token),
+  });
+  const isAdmin = meQuery.data?.isAdmin === true;
+
   function handleLogout() {
     logout();
     navigate({ to: "/login", replace: true });
@@ -161,7 +176,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <aside className="fixed inset-y-0 left-0 hidden w-64 md:block">
-        <SidebarInner pathname={pathname} />
+        <SidebarInner pathname={pathname} isAdmin={isAdmin} />
       </aside>
 
       <div className="md:pl-64">
@@ -178,7 +193,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-64 p-0">
-              <SidebarInner pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+              <SidebarInner pathname={pathname} onNavigate={() => setMobileOpen(false)} isAdmin={isAdmin} />
             </SheetContent>
           </Sheet>
 

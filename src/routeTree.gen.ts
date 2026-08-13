@@ -15,6 +15,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as DashboardAdminRouteImport } from './routes/dashboard.admin'
 import { Route as DashboardExperienceRouteImport } from './routes/dashboard.experience'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
 import { Route as DashboardTestimonialsRouteImport } from './routes/dashboard.testimonials'
@@ -58,6 +59,11 @@ const SignupRoute = SignupRouteImport.update({
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardAdminRoute = DashboardAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardExperienceRoute = DashboardExperienceRouteImport.update({
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/experience': typeof DashboardExperienceRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/experience': typeof DashboardExperienceRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
@@ -184,6 +192,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/dashboard/admin': typeof DashboardAdminRoute
   '/dashboard/experience': typeof DashboardExperienceRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/signup'
+    | '/dashboard/admin'
     | '/dashboard/experience'
     | '/dashboard/settings'
     | '/dashboard/testimonials'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/signup'
+    | '/dashboard/admin'
     | '/dashboard/experience'
     | '/dashboard/settings'
     | '/dashboard/testimonials'
@@ -251,6 +262,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/signup'
+    | '/dashboard/admin'
     | '/dashboard/experience'
     | '/dashboard/settings'
     | '/dashboard/testimonials'
@@ -320,6 +332,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/admin': {
+      id: '/dashboard/admin'
+      path: '/admin'
+      fullPath: '/dashboard/admin'
+      preLoaderRoute: typeof DashboardAdminRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/experience': {
@@ -424,6 +443,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface DashboardRouteChildren {
+  DashboardAdminRoute: typeof DashboardAdminRoute
   DashboardExperienceRoute: typeof DashboardExperienceRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardTestimonialsRoute: typeof DashboardTestimonialsRoute
@@ -436,6 +456,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAdminRoute: DashboardAdminRoute,
   DashboardExperienceRoute: DashboardExperienceRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardTestimonialsRoute: DashboardTestimonialsRoute,

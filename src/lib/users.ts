@@ -17,6 +17,7 @@ export type UserProfile = {
     website?: string;
   };
   subscriptionTier?: string;
+  isAdmin?: boolean;
   isActive?: boolean;
   isVerified?: boolean;
   createdAt?: string;
