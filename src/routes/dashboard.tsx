@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AppShell } from "@/components/layouts/AppShell";
+import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/lib/auth";
 import { ActiveProfileProvider } from "@/lib/active-profile";
 
@@ -31,6 +32,7 @@ function DashboardLayout() {
       <AppShell>
         <Outlet />
       </AppShell>
+      <Toaster />
     </ActiveProfileProvider>
   );
 }

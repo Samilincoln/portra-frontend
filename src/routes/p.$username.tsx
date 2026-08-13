@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Boxes, Loader2 } from "lucide-react";
 
 import { PublicLayout } from "@/components/layouts/PublicLayout";
+import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/auth";
@@ -53,7 +54,12 @@ function ProfileLayout() {
   const hasProfileSlug = parts.length >= 3 && parts[0] === "p";
 
   if (hasProfileSlug) {
-    return <Outlet />;
+    return (
+      <>
+        <Outlet />
+        <Toaster />
+      </>
+    );
   }
 
   const username = parts[1] ?? "";
