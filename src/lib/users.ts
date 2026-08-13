@@ -38,8 +38,19 @@ function toSnakeCasePayload(input: Record<string, unknown>): Record<string, unkn
   };
 }
 
+function toCamelCase(obj: Record<string, unknown>): UserProfile {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = key.replace(/_([a-z0-9])/g, (_, letter) => letter.toUpperCase());
+    result[camelKey] = value;
+  }
+  return result as UserProfile;
+}
+
 export async function getMe(token: string | null): Promise<UserProfile> {
-  return apiFetch<UserProfile>("/api/v1/auth/me", token);
+  const raw = await apiFetch<unknown>("/api/v1/auth/me", token);
+  if (!raw || typeof raw !== "object") return {} as UserProfile;
+  return toCamelCase(raw as Record<string, unknown>);
 }
 
 export async function updateMe(

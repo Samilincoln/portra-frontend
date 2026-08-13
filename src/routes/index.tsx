@@ -5,16 +5,16 @@ import { ArrowRight } from "lucide-react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Portra — Portfolios for AI & backend engineers" },
+      { title: "Portra — Portfolios for builders who ship" },
       {
         name: "description",
         content:
-          "Portra is the premium portfolio platform for AI and backend engineers. Showcase projects, case studies, and writing on a domain you own.",
+          "Portra is the premium portfolio platform for engineers and developers. Publish what you build — no themes, no CMS, no fuss.",
       },
-      { property: "og:title", content: "Portra — Portfolios for AI & backend engineers" },
+      { property: "og:title", content: "Portra — Portfolios for builders who ship" },
       {
         property: "og:description",
-        content: "Premium portfolios for AI and backend engineers.",
+        content: "Publish what you build — no themes, no CMS, no fuss.",
       },
     ],
   }),
@@ -27,14 +27,13 @@ function Home() {
       <section className="mx-auto max-w-6xl px-6 py-24 md:py-32">
         <div className="max-w-3xl">
           <span className="inline-flex items-center rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
-            For AI & backend engineers
+            For builders who ship
           </span>
           <h1 className="mt-6 text-5xl font-semibold tracking-tight text-foreground md:text-6xl">
             The portfolio your engineering work deserves.
           </h1>
           <p className="mt-6 text-lg text-muted-foreground">
-            Publish projects, case studies, and writing on a fast, opinionated
-            site — without wrestling with themes, hosting, or a CMS.
+            Publish what you build — no themes, no CMS, no fuss.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link

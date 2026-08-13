@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Github, Linkedin, Twitter, Globe, Check, ExternalLink } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,12 @@ import {
   type Profile,
   type ProfileInput,
 } from "@/lib/profiles";
+import {
+  getOAuthUrl,
+  getLinkedAccounts,
+  unlinkAccount,
+  type OAuthProvider,
+} from "@/lib/oauth";
 
 function slugify(s: string) {
   return s
@@ -38,6 +44,10 @@ type ProfileForm = {
   headline: string;
   avatar: string;
   industries: string;
+  github: string;
+  linkedin: string;
+  twitter: string;
+  website: string;
 };
 
 const emptyForm: ProfileForm = {
@@ -47,6 +57,10 @@ const emptyForm: ProfileForm = {
   headline: "",
   avatar: "",
   industries: "",
+  github: "",
+  linkedin: "",
+  twitter: "",
+  website: "",
 };
 
 export function ProfileDialog({
@@ -64,6 +78,59 @@ export function ProfileDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [slugEdited, setSlugEdited] = useState(false);
 
+  // Fetch linked OAuth accounts
+  const { data: linkedAccounts = [] } = useQuery({
+    queryKey: ["oauth-accounts"],
+    queryFn: () => getLinkedAccounts(token),
+    enabled: open,
+  });
+
+  function isProviderConnected(provider: OAuthProvider): boolean {
+    return linkedAccounts.some((a) => a.provider === provider);
+  }
+
+  async function connectProvider(provider: OAuthProvider) {
+    try {
+      const { url, code_verifier } = await getOAuthUrl(token, provider);
+
+      // Store code_verifier for Twitter PKCE flow (localStorage, not sessionStorage — popup can't access parent's sessionStorage)
+      if (code_verifier) {
+        localStorage.setItem("portra:twitter_code_verifier", code_verifier);
+      }
+
+      // Open popup
+      const width = 600;
+      const height = 700;
+      const left = window.innerWidth / 2 - width / 2;
+      const top = window.innerHeight / 2 - height / 2;
+      const popup = window.open(
+        url,
+        `Connect ${provider}`,
+        `width=${width},height=${height},left=${left},top=${top}`,
+      );
+
+      // Poll for popup close
+      const timer = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(timer);
+          qc.invalidateQueries({ queryKey: ["oauth-accounts"] });
+        }
+      }, 500);
+    } catch (err: { message?: string }) {
+      toast.error(err?.message ?? "Failed to start connection");
+    }
+  }
+
+  async function disconnectProvider(provider: OAuthProvider) {
+    try {
+      await unlinkAccount(token, provider);
+      toast.success(`${provider} disconnected`);
+      qc.invalidateQueries({ queryKey: ["oauth-accounts"] });
+    } catch (err: { message?: string }) {
+      toast.error(err?.message ?? "Failed to disconnect");
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
     setSlugEdited(false);
@@ -76,6 +143,10 @@ export function ProfileDialog({
         headline: editing.headline ?? "",
         avatar: editing.avatar ?? "",
         industries: (editing.industries ?? []).join(", "),
+        github: editing.social?.github ?? "",
+        linkedin: editing.social?.linkedin ?? "",
+        twitter: editing.social?.twitter ?? "",
+        website: editing.social?.website ?? "",
       });
     } else {
       setForm(emptyForm);
@@ -92,13 +163,13 @@ export function ProfileDialog({
         ? updateProfile(token, editing.id, input)
         : createProfile(token, input),
     onSuccess: () => {
-      toast.success(editing ? "Profile updated" : "Profile created");
+      toast.success(editing ? "Portfolio updated" : "Portfolio created");
       qc.invalidateQueries({ queryKey: ["profiles"] });
       qc.invalidateQueries({ queryKey: ["profile-limits"] });
       onOpenChange(false);
     },
     onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not save profile"),
+      toast.error(err?.message ?? "Could not save portfolio"),
   });
 
   function validate(): boolean {
@@ -126,6 +197,9 @@ export function ProfileDialog({
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
+      social: {
+        website: form.website.trim() || undefined,
+      },
     });
   }
 
@@ -133,11 +207,11 @@ export function ProfileDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit profile" : "New profile"}</DialogTitle>
+          <DialogTitle>{editing ? "Edit portfolio" : "New portfolio"}</DialogTitle>
           <DialogDescription>
             {editing
-              ? "Update your profile details."
-              : "Create a new portfolio profile."}
+              ? "Update your portfolio details."
+              : "Create a new portfolio."}
           </DialogDescription>
         </DialogHeader>
 
@@ -228,6 +302,66 @@ export function ProfileDialog({
             </p>
           </div>
 
+          <div className="space-y-3">
+            <Label className="text-sm">Social connections</Label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(["github", "linkedin", "twitter"] as const).map((provider) => {
+                const connected = isProviderConnected(provider);
+                return (
+                  <div
+                    key={provider}
+                    className="flex items-center justify-between rounded-lg border border-border p-3"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium capitalize">{provider}</span>
+                      {connected && (
+                        <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                          <Check className="h-3 w-3" /> Connected
+                        </span>
+                      )}
+                    </div>
+                    {connected ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+                        onClick={() => disconnectProvider(provider)}
+                      >
+                        Disconnect
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => connectProvider(provider)}
+                      >
+                        <ExternalLink className="h-3 w-3" /> Connect
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Website - Manual input */}
+              <div className="space-y-1.5">
+                <Label className="text-sm">Website</Label>
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <Input
+                    value={form.website}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, website: e.target.value }))
+                    }
+                    placeholder="https://yoursite.com"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <DialogFooter>
             <Button
               type="button"
@@ -241,7 +375,7 @@ export function ProfileDialog({
               {mutation.isPending ? (
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
               ) : null}
-              {editing ? "Save changes" : "Create profile"}
+              {editing ? "Save changes" : "Create portfolio"}
             </Button>
           </DialogFooter>
         </form>

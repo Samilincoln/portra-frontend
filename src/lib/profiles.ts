@@ -1,5 +1,12 @@
 import { apiFetch } from "@/lib/auth";
 
+export type ProfileSocial = {
+  github?: string;
+  linkedin?: string;
+  twitter?: string;
+  website?: string;
+};
+
 export type Profile = {
   id: string;
   userId: string;
@@ -9,6 +16,7 @@ export type Profile = {
   headline?: string | null;
   avatar?: string | null;
   industries?: string[];
+  social?: ProfileSocial;
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;
@@ -27,6 +35,7 @@ export type ProfileInput = {
   headline?: string;
   avatar?: string;
   industries?: string[];
+  social?: ProfileSocial;
 };
 
 export type SubscriptionTier = {
@@ -37,6 +46,7 @@ export type SubscriptionTier = {
 };
 
 function normalizeProfile(raw: Record<string, unknown>): Profile {
+  const rawSocial = raw.social as Record<string, unknown> | undefined;
   return {
     id: String(raw.id ?? ""),
     userId: String(raw.user_id ?? raw.userId ?? ""),
@@ -48,6 +58,14 @@ function normalizeProfile(raw: Record<string, unknown>): Profile {
     industries: typeof raw.industries === "string"
       ? raw.industries.split(",").map((s: string) => s.trim()).filter(Boolean)
       : Array.isArray(raw.industries) ? (raw.industries as string[]) : [],
+    social: rawSocial
+      ? {
+          github: rawSocial.github ? String(rawSocial.github) : undefined,
+          linkedin: rawSocial.linkedin ? String(rawSocial.linkedin) : undefined,
+          twitter: rawSocial.twitter ? String(rawSocial.twitter) : undefined,
+          website: rawSocial.website ? String(rawSocial.website) : undefined,
+        }
+      : undefined,
     isDefault: Boolean(raw.is_default ?? raw.isDefault),
     createdAt: String(raw.created_at ?? raw.createdAt ?? ""),
     updatedAt: String(raw.updated_at ?? raw.updatedAt ?? ""),
@@ -56,6 +74,7 @@ function normalizeProfile(raw: Record<string, unknown>): Profile {
 
 function toSnakeCasePayload(input: Record<string, unknown>): Record<string, unknown> {
   const industries = input.industries;
+  const social = input.social as Record<string, unknown> | undefined;
   return {
     name: input.name,
     slug: input.slug,
@@ -63,6 +82,14 @@ function toSnakeCasePayload(input: Record<string, unknown>): Record<string, unkn
     headline: input.headline,
     avatar: input.avatar,
     industries: Array.isArray(industries) ? industries.join(", ") : industries,
+    social: social
+      ? {
+          github: social.github || null,
+          linkedin: social.linkedin || null,
+          twitter: social.twitter || null,
+          website: social.website || null,
+        }
+      : undefined,
   };
 }
 

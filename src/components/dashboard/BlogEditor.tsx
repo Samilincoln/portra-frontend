@@ -148,6 +148,7 @@ export function BlogEditor({ existing }: Props) {
             title={title}
             content={content}
             projectId={selectedProjectId || undefined}
+            projects={projects}
             onApply={({ title: t, content: c }) => {
               if (t) setTitle(t);
               setContent(c);
@@ -196,6 +197,7 @@ export function BlogEditor({ existing }: Props) {
             <SelectValue placeholder="Select a project to link this blog post" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="">None</SelectItem>
             {projects.map((project) => (
               <SelectItem key={project.id} value={project.id}>
                 {project.title}

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { authFetch, useAuth, type AuthUser, type AuthApiError } from "@/lib/auth";
 import { getMe } from "@/lib/users";
+import { getOAuthUrl, type OAuthProvider } from "@/lib/oauth";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -50,6 +51,30 @@ function LoginPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string>();
   const [loading, setLoading] = useState(false);
+
+  async function connectProvider(provider: OAuthProvider) {
+    try {
+      const { url, code_verifier } = await getOAuthUrl(null, provider);
+
+      // Store code_verifier for Twitter PKCE flow
+      if (code_verifier) {
+        localStorage.setItem("portra:twitter_code_verifier", code_verifier);
+      }
+
+      // Open popup
+      const width = 600;
+      const height = 700;
+      const left = window.innerWidth / 2 - width / 2;
+      const top = window.innerHeight / 2 - height / 2;
+      window.open(
+        url,
+        `Connect ${provider}`,
+        `width=${width},height=${height},left=${left},top=${top}`,
+      );
+    } catch (err: { message?: string }) {
+      setFormError(err?.message ?? "Failed to start social login");
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -174,15 +199,33 @@ function LoginPage() {
             </span>
           </div>
         </div>
-        <Button type="button" variant="outline" className="w-full" disabled={loading}>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={loading}
+          onClick={() => connectProvider("github")}
+        >
           <Github className="h-4 w-4" />
           Sign in with GitHub
         </Button>
-        <Button type="button" variant="outline" className="w-full" disabled={loading}>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={loading}
+          onClick={() => connectProvider("linkedin")}
+        >
           <Linkedin className="h-4 w-4" />
           Sign in with LinkedIn
         </Button>
-        <Button type="button" variant="outline" className="w-full" disabled={loading}>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={loading}
+          onClick={() => connectProvider("twitter")}
+        >
           <GoogleIcon className="h-4 w-4" />
           Sign in with Google
         </Button>

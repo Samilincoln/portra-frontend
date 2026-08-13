@@ -19,6 +19,7 @@ import { Route as DashboardExperienceRouteImport } from './routes/dashboard.expe
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
 import { Route as DashboardTestimonialsRouteImport } from './routes/dashboard.testimonials'
 import { Route as PUsernameRouteImport } from './routes/p.$username'
+import { Route as AuthCallbackProviderRouteImport } from './routes/auth.callback.$provider'
 import { Route as DashboardBlogIndexRouteImport } from './routes/dashboard.blog.index'
 import { Route as DashboardBlogNewRouteImport } from './routes/dashboard.blog.new'
 import { Route as DashboardProjectsIndexRouteImport } from './routes/dashboard.projects.index'
@@ -77,6 +78,11 @@ const DashboardTestimonialsRoute = DashboardTestimonialsRouteImport.update({
 const PUsernameRoute = PUsernameRouteImport.update({
   id: '/p/$username',
   path: '/p/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackProviderRoute = AuthCallbackProviderRouteImport.update({
+  id: '/auth/callback/$provider',
+  path: '/auth/callback/$provider',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardBlogIndexRoute = DashboardBlogIndexRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
   '/p/$username': typeof PUsernameRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/auth/callback/$provider': typeof AuthCallbackProviderRoute
   '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
   '/p/$username/$profileSlug': typeof PUsernameProfileSlugRouteWithChildren
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
   '/p/$username': typeof PUsernameRouteWithChildren
   '/dashboard': typeof DashboardIndexRoute
+  '/auth/callback/$provider': typeof AuthCallbackProviderRoute
   '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
   '/p/$username/$profileSlug': typeof PUsernameProfileSlugRouteWithChildren
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/dashboard/testimonials': typeof DashboardTestimonialsRoute
   '/p/$username': typeof PUsernameRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
+  '/auth/callback/$provider': typeof AuthCallbackProviderRoute
   '/dashboard/blog/new': typeof DashboardBlogNewRoute
   '/dashboard/projects/$id': typeof DashboardProjectsIdRoute
   '/p/$username/$profileSlug': typeof PUsernameProfileSlugRouteWithChildren
@@ -204,6 +213,7 @@ export interface FileRouteTypes {
     | '/dashboard/testimonials'
     | '/p/$username'
     | '/dashboard/'
+    | '/auth/callback/$provider'
     | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
     | '/p/$username/$profileSlug'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/dashboard/testimonials'
     | '/p/$username'
     | '/dashboard'
+    | '/auth/callback/$provider'
     | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
     | '/p/$username/$profileSlug'
@@ -245,6 +256,7 @@ export interface FileRouteTypes {
     | '/dashboard/testimonials'
     | '/p/$username'
     | '/dashboard/'
+    | '/auth/callback/$provider'
     | '/dashboard/blog/new'
     | '/dashboard/projects/$id'
     | '/p/$username/$profileSlug'
@@ -263,6 +275,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   PUsernameRoute: typeof PUsernameRouteWithChildren
+  AuthCallbackProviderRoute: typeof AuthCallbackProviderRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -335,6 +348,13 @@ declare module '@tanstack/react-router' {
       path: '/p/$username'
       fullPath: '/p/$username'
       preLoaderRoute: typeof PUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback/$provider': {
+      id: '/auth/callback/$provider'
+      path: '/auth/callback/$provider'
+      fullPath: '/auth/callback/$provider'
+      preLoaderRoute: typeof AuthCallbackProviderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/blog/': {
@@ -477,6 +497,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   PUsernameRoute: PUsernameRouteWithChildren,
+  AuthCallbackProviderRoute: AuthCallbackProviderRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -20,12 +20,17 @@ import {
   ChevronRight,
   Loader2,
   Eye,
+  Github,
+  Linkedin,
+  Twitter,
+  Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PublicLayout } from "@/components/layouts/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -41,7 +46,7 @@ import {
   submitContact,
   PortfolioNotFoundError,
 } from "@/lib/portfolio";
-import type { Skill } from "@/lib/skills";
+import type { Skill, SkillLevel } from "@/lib/skills";
 import type { Experience } from "@/lib/experiences";
 import type { Testimonial } from "@/lib/testimonials";
 import type { BlogPost } from "@/lib/blog";
@@ -245,13 +250,13 @@ function PublicPortfolio() {
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {skills.map((s) => (
-                      <Badge
+                      <span
                         key={s.id}
-                        variant="secondary"
-                        className="rounded-full border border-border bg-card px-3 py-1 text-sm font-medium"
+                        className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-sm font-medium"
                       >
                         {s.name}
-                      </Badge>
+                        <SkillLevelDots level={s.level} />
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -442,9 +447,28 @@ function PublicPortfolio() {
                   </Button>
                 </a>
               ) : null}
-              {profile?.social?.website ? (
-                <p className="text-muted-foreground">Website: <a className="text-accent hover:underline" href={profile.social.website} target="_blank" rel="noreferrer">{profile.social.website}</a></p>
-              ) : null}
+              <div className="flex flex-wrap gap-3">
+                {profile?.social?.github ? (
+                  <a href={profile.social.github} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-accent transition-colors">
+                    <Github className="h-4 w-4" /> GitHub
+                  </a>
+                ) : null}
+                {profile?.social?.linkedin ? (
+                  <a href={profile.social.linkedin} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-accent transition-colors">
+                    <Linkedin className="h-4 w-4" /> LinkedIn
+                  </a>
+                ) : null}
+                {profile?.social?.twitter ? (
+                  <a href={profile.social.twitter} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-accent transition-colors">
+                    <Twitter className="h-4 w-4" /> Twitter
+                  </a>
+                ) : null}
+                {profile?.social?.website ? (
+                  <a href={profile.social.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-accent transition-colors">
+                    <Globe className="h-4 w-4" /> Website
+                  </a>
+                ) : null}
+              </div>
             </div>
           </div>
           <ContactForm username={username} profileSlug={profileSlug} />
@@ -730,4 +754,28 @@ function formatRange(start?: string | null, end?: string | null) {
     return d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
   };
   return `${start ? fmt(start) : "Unknown"} — ${end ? fmt(end) : "Present"}`;
+}
+
+const LEVEL_COLOR: Record<number, string> = {
+  1: "bg-zinc-400",
+  2: "bg-amber-400",
+  3: "bg-amber-500",
+  4: "bg-yellow-400",
+  5: "bg-yellow-500",
+};
+
+function SkillLevelDots({ level }: { level: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5" title={`${level}/5`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span
+          key={i}
+          className={cn(
+            "h-2 w-2 rounded-full ring-1 ring-black/10 dark:ring-white/20",
+            i <= level ? (LEVEL_COLOR[level] ?? "bg-zinc-400") : "bg-muted",
+          )}
+        />
+      ))}
+    </span>
+  );
 }

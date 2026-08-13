@@ -15,7 +15,6 @@ import { AuthProvider } from "../lib/auth";
 import { ThemeProvider } from "../lib/theme";
 import { Toaster } from "../components/ui/sonner";
 
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -81,15 +80,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Portra — Portfolios for AI & backend engineers" },
+      { title: "Portra — Portfolios for builders who ship" },
       {
         name: "description",
         content:
-          "Portra is the premium portfolio platform for AI and backend engineers.",
+          "Portra is the premium portfolio platform for engineers and developers. Publish what you build — no themes, no CMS, no fuss.",
       },
       { name: "author", content: "Portra" },
       { property: "og:title", content: "Portra" },
-      { property: "og:description", content: "Portfolios for AI & backend engineers." },
+      {
+        property: "og:description",
+        content: "Publish what you build — no themes, no CMS, no fuss.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -112,7 +114,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -155,4 +157,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-

@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Settings, ChevronDown } from "lucide-react";
+import { Check, Settings, ArrowLeftRight } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,6 @@ import { useActiveProfile } from "@/lib/active-profile";
 
 export function ProfileSwitcher() {
   const { token } = useAuth();
-  const navigate = useNavigate();
   const { activeProfile, profiles, isLoading, setActiveProfileId } = useActiveProfile();
 
   const limitsQuery = useQuery({
@@ -33,7 +32,7 @@ export function ProfileSwitcher() {
 
   if (isLoading) {
     return (
-      <div className="space-y-2 px-3">
+      <div className="px-3">
         <div className="h-10 animate-pulse rounded-lg bg-sidebar-accent/50" />
       </div>
     );
@@ -48,28 +47,16 @@ export function ProfileSwitcher() {
           className="flex items-center gap-2 rounded-lg border border-dashed border-sidebar-border px-3 py-2 text-xs text-sidebar-foreground/60 hover:border-sidebar-foreground/30"
         >
           <Settings className="h-3.5 w-3.5" />
-          Create your first profile
+          Create your first portfolio
         </Link>
       </div>
     );
   }
 
-  if (profiles.length <= 1) {
-    return (
-      <div className="space-y-2 px-3">
-        <div className="flex items-center gap-2.5 rounded-lg bg-sidebar-accent/50 px-3 py-2">
-          <Avatar className="h-7 w-7">
-            {activeProfile.avatar ? (
-              <img
-                src={activeProfile.avatar}
-                alt={activeProfile.name}
-                className="h-7 w-7 rounded-full object-cover"
-              />
-            ) : null}
-            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-[10px] font-semibold text-primary-foreground">
-              {activeProfile.name.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+  return (
+    <div className="px-3">
+      <DropdownMenu>
+        <DropdownMenuTrigger className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none ring-offset-sidebar transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring">
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-medium">{activeProfile.name}</p>
             <p className="truncate text-[10px] text-sidebar-foreground/50">
@@ -79,39 +66,9 @@ export function ProfileSwitcher() {
           <Badge variant="secondary" className="shrink-0 text-[10px]">
             {tier.label}
           </Badge>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="px-3">
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex w-full items-center gap-2.5 rounded-lg bg-sidebar-accent/50 px-3 py-2 text-left outline-none ring-offset-sidebar transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring">
-          <Avatar className="h-7 w-7">
-            {activeProfile.avatar ? (
-              <img
-                src={activeProfile.avatar}
-                alt={activeProfile.name}
-                className="h-7 w-7 rounded-full object-cover"
-              />
-            ) : null}
-            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-[10px] font-semibold text-primary-foreground">
-              {activeProfile.name.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium">
-              {activeProfile.name}
-            </p>
-            <p className="truncate text-[10px] text-sidebar-foreground/50">
-              /{activeProfile.slug}
-            </p>
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-sidebar-foreground/70">
+            <ArrowLeftRight className="h-4 w-4" />
           </div>
-          <Badge variant="secondary" className="shrink-0 text-[10px]">
-            {tier.label}
-          </Badge>
-          <ChevronDown className="h-3 w-3 shrink-0 text-sidebar-foreground/50" />
         </DropdownMenuTrigger>
 
         <DropdownMenuContent
@@ -119,7 +76,7 @@ export function ProfileSwitcher() {
           align="start"
           className="w-56"
         >
-          <DropdownMenuLabel>Switch profile</DropdownMenuLabel>
+          <DropdownMenuLabel>Switch portfolio</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {profiles.map((profile) => (
             <DropdownMenuItem
@@ -162,7 +119,7 @@ export function ProfileSwitcher() {
               className="gap-2"
             >
               <Settings className="h-3.5 w-3.5" />
-              Manage profiles
+              Manage portfolios
             </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>

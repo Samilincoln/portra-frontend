@@ -9,6 +9,7 @@ const DraftInput = z.object({
   existingContent: z.string().optional(),
   tone: z.string().trim().optional(),
   provider: z.string().trim().optional(),
+  platform: z.enum(["blog", "linkedin", "twitter"]).default("blog"),
   token: z.string().optional(),
 });
 
@@ -17,6 +18,26 @@ export type BlogDraft = {
   content: string;
   excerpt: string;
   provider: string;
+  platform: string;
+};
+
+const ExperienceDescriptionInput = z.object({
+  company: z.string().trim().min(1),
+  role: z.string().trim().min(1),
+  location: z.string().trim().optional(),
+  startDate: z.string().trim().optional(),
+  endDate: z.string().trim().optional(),
+  isCurrent: z.boolean().optional(),
+  industry: z.string().trim().optional(),
+  technologies: z.array(z.string()).optional(),
+  achievements: z.string().trim().optional(),
+  tone: z.enum(["professional", "casual", "technical"]).optional(),
+  token: z.string().optional(),
+});
+
+export type ExperienceDescriptionDraft = {
+  description: string;
+  keywords: string[];
 };
 
 export const draftBlogPost = createServerFn({ method: "POST" })
@@ -55,6 +76,7 @@ export const draftBlogPost = createServerFn({ method: "POST" })
                 .filter(Boolean)
                 .join("\n\n"),
         tone: data.tone ?? "professional",
+        platform: data.platform,
         ...(data.provider ? { provider: data.provider } : {}),
       }),
     });
@@ -80,6 +102,49 @@ export const draftBlogPost = createServerFn({ method: "POST" })
       content,
       excerpt: raw.excerpt ?? "",
       provider: raw.provider ?? "",
+      platform: raw.platform ?? data.platform,
     };
     return result;
+  });
+
+export const generateExperienceDescription = createServerFn({ method: "POST" })
+  .validator((input: unknown) => ExperienceDescriptionInput.parse(input))
+  .handler(async ({ data }): Promise<ExperienceDescriptionDraft> => {
+    const baseUrl =
+      process.env["VITE_API_BASE_URL"] ?? "http://localhost:8000";
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (data.token) headers.Authorization = `Bearer ${data.token}`;
+
+    const res = await fetch(`${baseUrl}/api/v1/experiences/ai-describe`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        company: data.company,
+        role: data.role,
+        location: data.location ?? "",
+        start_date: data.startDate ?? "",
+        end_date: data.endDate ?? null,
+        is_current: data.isCurrent ?? false,
+        industry: data.industry ?? "",
+        technologies: data.technologies ?? [],
+        achievements: data.achievements ?? "",
+        tone: data.tone ?? "professional",
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(
+        `AI generation failed (${res.status}): ${body || res.statusText}`,
+      );
+    }
+
+    const raw = await res.json();
+    return {
+      description: raw.description ?? "",
+      keywords: raw.keywords ?? [],
+    };
   });

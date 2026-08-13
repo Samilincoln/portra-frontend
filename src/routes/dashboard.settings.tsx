@@ -1,20 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, Moon, Palette, Sun, Trash2, Upload, Users } from "lucide-react";
+import { CreditCard, Loader2, Moon, Palette, Sun, Trash2, Upload, Users, Check, X, ExternalLink } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,21 +29,38 @@ import { PALETTES, useTheme, type PaletteId } from "@/lib/theme";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfilesTab } from "@/components/dashboard/ProfilesTab";
+import { BillingTab } from "@/components/dashboard/BillingTab";
+import {
+  getOAuthUrl,
+  getLinkedAccounts,
+  unlinkAccount,
+  type OAuthProvider,
+} from "@/lib/oauth";
+
+const settingsSearchSchema = z.object({
+  tab: z.enum(["profile", "profiles", "portfolio", "billing", "account"]).optional(),
+});
 
 export const Route = createFileRoute("/dashboard/settings")({
   head: () => ({ meta: [{ title: "Settings — Portra" }] }),
+  validateSearch: (search) => settingsSearchSchema.parse(search),
   component: SettingsPage,
 });
-
 
 function SettingsPage() {
   const { token, logout } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { tab } = useSearch({ from: "/dashboard/settings" });
+  const [activeTab, setActiveTab] = useState(tab ?? "profile");
   const query = useQuery({
     queryKey: ["me"],
     queryFn: () => getMe(token),
   });
+
+  useEffect(() => {
+    if (tab) setActiveTab(tab);
+  }, [tab]);
 
   if (query.isLoading) {
     return (
@@ -65,29 +78,42 @@ function SettingsPage() {
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Profile, portfolio, and account preferences.
+          Profile, portfolio, billing, and account preferences.
         </p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="profiles" className="gap-1.5">
             <Users className="h-3.5 w-3.5" />
-            Profiles
+            Portfolios
           </TabsTrigger>
-          <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
+          <TabsTrigger value="portfolio">Appearance</TabsTrigger>
+          <TabsTrigger value="billing" className="gap-1.5">
+            <CreditCard className="h-3.5 w-3.5" />
+            Billing
+          </TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
-          <ProfileTab profile={profile} onSaved={() => qc.invalidateQueries({ queryKey: ["me"] })} />
+          <ProfileTab
+            profile={profile}
+            onSaved={() => qc.invalidateQueries({ queryKey: ["me"] })}
+          />
         </TabsContent>
         <TabsContent value="profiles">
           <ProfilesTab />
         </TabsContent>
         <TabsContent value="portfolio">
-          <PortfolioTab profile={profile} onSaved={() => qc.invalidateQueries({ queryKey: ["me"] })} />
+          <PortfolioTab
+            profile={profile}
+            onSaved={() => qc.invalidateQueries({ queryKey: ["me"] })}
+          />
+        </TabsContent>
+        <TabsContent value="billing">
+          <BillingTab profile={profile} />
         </TabsContent>
         <TabsContent value="account">
           <AccountTab
@@ -116,26 +142,71 @@ function SectionCard({
     <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
       <div>
         <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-        {description ? (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        ) : null}
+        {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
       </div>
       <div className="mt-5">{children}</div>
     </section>
   );
 }
 
-function ProfileTab({
-  profile,
-  onSaved,
-}: {
-  profile: UserProfile;
-  onSaved: () => void;
-}) {
+function ProfileTab({ profile, onSaved }: { profile: UserProfile; onSaved: () => void }) {
   const { token } = useAuth();
+  const qc = useQueryClient();
   const [form, setForm] = useState<UserProfile>(profile);
   useEffect(() => setForm(profile), [profile]);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Fetch linked OAuth accounts
+  const { data: linkedAccounts = [] } = useQuery({
+    queryKey: ["oauth-accounts"],
+    queryFn: () => getLinkedAccounts(token),
+  });
+
+  function isProviderConnected(provider: OAuthProvider): boolean {
+    return linkedAccounts.some((a) => a.provider === provider);
+  }
+
+  async function connectProvider(provider: OAuthProvider) {
+    try {
+      const { url, code_verifier } = await getOAuthUrl(token, provider);
+
+      // Store code_verifier for Twitter PKCE flow (localStorage, not sessionStorage — popup can't access parent's sessionStorage)
+      if (code_verifier) {
+        localStorage.setItem("portra:twitter_code_verifier", code_verifier);
+      }
+
+      // Open popup
+      const width = 600;
+      const height = 700;
+      const left = window.innerWidth / 2 - width / 2;
+      const top = window.innerHeight / 2 - height / 2;
+      const popup = window.open(
+        url,
+        `Connect ${provider}`,
+        `width=${width},height=${height},left=${left},top=${top}`,
+      );
+
+      // Poll for popup close
+      const timer = setInterval(() => {
+        if (popup?.closed) {
+          clearInterval(timer);
+          qc.invalidateQueries({ queryKey: ["oauth-accounts"] });
+        }
+      }, 500);
+    } catch (err: { message?: string }) {
+      toast.error(err?.message ?? "Failed to start connection");
+    }
+  }
+
+  async function disconnectProvider(provider: OAuthProvider) {
+    try {
+      await unlinkAccount(token, provider);
+      toast.success(`${provider} disconnected`);
+      qc.invalidateQueries({ queryKey: ["oauth-accounts"] });
+    } catch (err: { message?: string }) {
+      toast.error(err?.message ?? "Failed to disconnect");
+    }
+  }
 
   function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -150,8 +221,7 @@ function ProfileTab({
       return;
     }
     const reader = new FileReader();
-    reader.onload = () =>
-      setForm((f) => ({ ...f, avatarUrl: String(reader.result) }));
+    reader.onload = () => setForm((f) => ({ ...f, avatarUrl: String(reader.result) }));
     reader.onerror = () => toast.error("Could not read that image");
     reader.readAsDataURL(file);
   }
@@ -162,15 +232,11 @@ function ProfileTab({
       toast.success("Profile saved");
       onSaved();
     },
-    onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not save"),
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not save"),
   });
 
   return (
-    <SectionCard
-      title="Profile"
-      description="How you show up across your portfolio."
-    >
+    <SectionCard title="Profile" description="How you show up across your portfolio.">
       <form
         className="space-y-4"
         onSubmit={(e) => {
@@ -195,9 +261,7 @@ function ProfileTab({
             <Label>Profile picture</Label>
             <div className="flex items-center gap-3">
               <Avatar className="h-14 w-14">
-                {form.avatarUrl ? (
-                  <AvatarImage src={form.avatarUrl} alt="Profile picture" />
-                ) : null}
+                {form.avatarUrl ? <AvatarImage src={form.avatarUrl} alt="Profile picture" /> : null}
                 <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
                   {(form.name ?? form.email ?? "U").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
@@ -247,23 +311,70 @@ function ProfileTab({
             placeholder="One paragraph about what you build and who you help."
           />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {(["github", "linkedin", "twitter", "website"] as const).map((k) => (
-            <div className="space-y-1.5" key={k}>
-              <Label className="capitalize">{k}</Label>
-              <Input
-                value={form.social?.[k] ?? ""}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    social: { ...(form.social ?? {}), [k]: e.target.value },
-                  })
-                }
-                placeholder={`https://${k === "website" ? "example.com" : `${k}.com/handle`}`}
-              />
+
+        {/* Social Connections - OAuth */}
+        <div className="space-y-3">
+          <Label className="text-sm">Social connections</Label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(["github", "linkedin", "twitter"] as const).map((provider) => {
+              const connected = isProviderConnected(provider);
+              return (
+                <div
+                  key={provider}
+                  className="flex items-center justify-between rounded-lg border border-border p-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium capitalize">{provider}</span>
+                    {connected && (
+                      <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                        <Check className="h-3 w-3" /> Connected
+                      </span>
+                    )}
+                  </div>
+                  {connected ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+                      onClick={() => disconnectProvider(provider)}
+                    >
+                      Disconnect
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => connectProvider(provider)}
+                    >
+                      <ExternalLink className="h-3 w-3" /> Connect
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Website - Manual input */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">Website</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={form.social?.website ?? ""}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      social: { ...(form.social ?? {}), website: e.target.value },
+                    })
+                  }
+                  placeholder="https://yoursite.com"
+                />
+              </div>
             </div>
-          ))}
+          </div>
         </div>
+
         <div className="flex justify-end">
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? (
@@ -280,13 +391,7 @@ function ProfileTab({
   );
 }
 
-function PortfolioTab({
-  profile,
-  onSaved,
-}: {
-  profile: UserProfile;
-  onSaved: () => void;
-}) {
+function PortfolioTab({ profile, onSaved }: { profile: UserProfile; onSaved: () => void }) {
   const { token } = useAuth();
   const { palette, setPalette, mode, setMode } = useTheme();
   const [form, setForm] = useState<UserProfile>(profile);
@@ -306,8 +411,7 @@ function PortfolioTab({
       toast.success("Portfolio saved");
       onSaved();
     },
-    onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not save"),
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not save"),
   });
 
   return (
@@ -332,9 +436,7 @@ function PortfolioTab({
               <Label>Username / slug</Label>
               <Input
                 value={form.username ?? ""}
-                onChange={(e) =>
-                  setForm({ ...form, username: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
                 placeholder="ada"
               />
             </div>
@@ -342,9 +444,7 @@ function PortfolioTab({
               <Label>Custom domain</Label>
               <Input
                 value={form.customDomain ?? ""}
-                onChange={(e) =>
-                  setForm({ ...form, customDomain: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, customDomain: e.target.value })}
                 placeholder="you.dev"
               />
             </div>
@@ -367,9 +467,7 @@ function PortfolioTab({
                     }}
                     className={cn(
                       "rounded-xl border p-4 text-left transition-colors",
-                      active
-                        ? "border-accent bg-accent/5"
-                        : "border-border hover:border-accent/40",
+                      active ? "border-accent bg-accent/5" : "border-border hover:border-accent/40",
                     )}
                   >
                     <div className="flex gap-1.5">
@@ -382,9 +480,7 @@ function PortfolioTab({
                       ))}
                     </div>
                     <p className="mt-3 text-sm font-medium">{t.label}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {t.description}
-                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{t.description}</p>
                   </button>
                 );
               })}
@@ -412,11 +508,7 @@ function PortfolioTab({
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded-lg bg-secondary text-foreground">
-              {mode === "dark" ? (
-                <Moon className="h-4 w-4" />
-              ) : (
-                <Sun className="h-4 w-4" />
-              )}
+              {mode === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </div>
             <div>
               <p className="text-sm font-medium">Dark mode</p>
@@ -436,13 +528,7 @@ function PortfolioTab({
   );
 }
 
-function AccountTab({
-  profile,
-  onDeleted,
-}: {
-  profile: UserProfile;
-  onDeleted: () => void;
-}) {
+function AccountTab({ profile, onDeleted }: { profile: UserProfile; onDeleted: () => void }) {
   const { token } = useAuth();
   const [email, setEmail] = useState(profile.email ?? "");
   useEffect(() => setEmail(profile.email ?? ""), [profile.email]);
@@ -454,21 +540,18 @@ function AccountTab({
   const emailMutation = useMutation({
     mutationFn: () => updateMe(token, { email }),
     onSuccess: () => toast.success("Email updated"),
-    onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not update"),
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not update"),
   });
 
   const passwordMutation = useMutation({
-    mutationFn: () =>
-      updateMe(token, { currentPassword: current, newPassword: next }),
+    mutationFn: () => updateMe(token, { currentPassword: current, newPassword: next }),
     onSuccess: () => {
       toast.success("Password updated");
       setCurrent("");
       setNext("");
       setConfirm("");
     },
-    onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not update"),
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not update"),
   });
 
   const deleteMutation = useMutation({
@@ -477,8 +560,7 @@ function AccountTab({
       toast.success("Account deleted");
       onDeleted();
     },
-    onError: (err: { message?: string }) =>
-      toast.error(err?.message ?? "Could not delete account"),
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not delete account"),
   });
 
   return (
@@ -493,11 +575,7 @@ function AccountTab({
         >
           <div className="min-w-[240px] flex-1 space-y-1.5">
             <Label>Email address</Label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <Button type="submit" disabled={emailMutation.isPending}>
             {emailMutation.isPending ? "Saving…" : "Update email"}
@@ -523,27 +601,15 @@ function AccountTab({
         >
           <div className="space-y-1.5">
             <Label>Current password</Label>
-            <Input
-              type="password"
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-            />
+            <Input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>New password</Label>
-            <Input
-              type="password"
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-            />
+            <Input type="password" value={next} onChange={(e) => setNext(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>Confirm password</Label>
-            <Input
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
+            <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
           </div>
           <div className="sm:col-span-3 flex justify-end">
             <Button type="submit" disabled={passwordMutation.isPending}>
@@ -554,18 +620,11 @@ function AccountTab({
       </SectionCard>
 
       <section className="rounded-2xl border border-destructive/40 bg-destructive/5 p-6">
-        <h2 className="text-lg font-semibold tracking-tight text-destructive">
-          Danger zone
-        </h2>
+        <h2 className="text-lg font-semibold tracking-tight text-destructive">Danger zone</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Deleting your account removes your portfolio, projects, and posts.
-          This can't be undone.
+          Deleting your account removes your portfolio, projects, and posts. This can't be undone.
         </p>
-        <Button
-          variant="destructive"
-          className="mt-4 gap-1.5"
-          onClick={() => setConfirmOpen(true)}
-        >
+        <Button variant="destructive" className="mt-4 gap-1.5" onClick={() => setConfirmOpen(true)}>
           <Trash2 className="h-4 w-4" /> Delete account
         </Button>
       </section>

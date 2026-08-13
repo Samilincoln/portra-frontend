@@ -63,7 +63,7 @@ export function ProfilesTab() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteProfile(token, id),
     onSuccess: () => {
-      toast.success("Profile deleted");
+      toast.success("Portfolio deleted");
       qc.invalidateQueries({ queryKey: ["profiles"] });
       qc.invalidateQueries({ queryKey: ["profile-limits"] });
       setConfirmDelete(null);
@@ -75,7 +75,7 @@ export function ProfilesTab() {
   const setDefaultMutation = useMutation({
     mutationFn: (id: string) => setDefaultProfile(token, id),
     onSuccess: () => {
-      toast.success("Default profile updated");
+      toast.success("Default portfolio updated");
       qc.invalidateQueries({ queryKey: ["profiles"] });
     },
     onError: (err: { message?: string }) =>
@@ -114,7 +114,7 @@ export function ProfilesTab() {
               <Badge variant="secondary">{tier.price}</Badge>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              {profiles.length} of {formatLimit(maxProfiles)} profiles used
+              {profiles.length} of {formatLimit(maxProfiles)} portfolios used
             </p>
           </div>
           {tierId === "free" ? (
@@ -145,7 +145,7 @@ export function ProfilesTab() {
         {/* Limits breakdown */}
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[
-            { label: "Profiles", value: maxProfiles },
+            { label: "Portfolios", value: maxProfiles },
             { label: "Projects", value: tier.projects },
             { label: "Blog posts", value: tier.blogPosts },
             { label: "Experiences", value: tier.experiences },
@@ -167,7 +167,7 @@ export function ProfilesTab() {
       <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Profiles</h2>
+            <h2 className="text-lg font-semibold tracking-tight">Portfolios</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Each profile gets its own public portfolio page.
             </p>
@@ -179,7 +179,7 @@ export function ProfilesTab() {
             size="sm"
           >
             <Plus className="h-4 w-4" />
-            New profile
+            New portfolio
           </Button>
         </div>
 
@@ -265,7 +265,7 @@ export function ProfilesTab() {
 
           {profiles.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              No profiles yet. Create your first profile to get started.
+              No portfolios yet. Create your first portfolio to get started.
             </div>
           ) : null}
         </div>
@@ -283,9 +283,9 @@ export function ProfilesTab() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete profile?</AlertDialogTitle>
+            <AlertDialogTitle>Delete portfolio?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the "{confirmDelete?.name}" profile
+              This will permanently delete the "{confirmDelete?.name}" portfolio
               and all its content. This can't be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

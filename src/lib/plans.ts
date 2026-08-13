@@ -80,3 +80,9 @@ export function getNextTier(tier: TierId): TierId | null {
 export function formatLimit(value: number): string {
   return value === Infinity ? "Unlimited" : String(value);
 }
+
+export function formatPlanDisplayText(tier: TierId): string {
+  if (tier === "free") return "free Starter plan";
+  if (tier === "pro") return "Pro plan";
+  return "Business plan";
+}

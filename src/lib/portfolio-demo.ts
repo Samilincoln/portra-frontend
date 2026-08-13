@@ -13,20 +13,20 @@ export function isDemoUsername(username: string) {
 }
 
 const DEMO_SKILLS: Skill[] = [
-  { id: "s1", name: "TypeScript", category: "Languages", level: "Expert" },
-  { id: "s2", name: "Python", category: "Languages", level: "Advanced" },
-  { id: "s3", name: "Go", category: "Languages", level: "Intermediate" },
-  { id: "s4", name: "React", category: "Frontend", level: "Expert" },
-  { id: "s5", name: "Tailwind CSS", category: "Frontend", level: "Expert" },
-  { id: "s6", name: "Next.js", category: "Frontend", level: "Advanced" },
-  { id: "s7", name: "PostgreSQL", category: "Data", level: "Advanced" },
-  { id: "s8", name: "Redis", category: "Data", level: "Intermediate" },
-  { id: "s9", name: "LangChain", category: "AI/ML", level: "Advanced" },
-  { id: "s10", name: "Vector Search", category: "AI/ML", level: "Advanced" },
-  { id: "s11", name: "Model Evaluation", category: "AI/ML", level: "Intermediate" },
-  { id: "s12", name: "AWS", category: "Infrastructure", level: "Advanced" },
-  { id: "s13", name: "Docker", category: "Infrastructure", level: "Advanced" },
-  { id: "s14", name: "Terraform", category: "Infrastructure", level: "Intermediate" },
+  { id: "s1", name: "TypeScript", category: "Languages", level: 5 },
+  { id: "s2", name: "Python", category: "Languages", level: 4 },
+  { id: "s3", name: "Go", category: "Languages", level: 2 },
+  { id: "s4", name: "React", category: "Frontend", level: 5 },
+  { id: "s5", name: "Tailwind CSS", category: "Frontend", level: 5 },
+  { id: "s6", name: "Next.js", category: "Frontend", level: 4 },
+  { id: "s7", name: "PostgreSQL", category: "Data", level: 4 },
+  { id: "s8", name: "Redis", category: "Data", level: 3 },
+  { id: "s9", name: "LangChain", category: "AI/ML", level: 4 },
+  { id: "s10", name: "Vector Search", category: "AI/ML", level: 4 },
+  { id: "s11", name: "Model Evaluation", category: "AI/ML", level: 3 },
+  { id: "s12", name: "AWS", category: "Infrastructure", level: 4 },
+  { id: "s13", name: "Docker", category: "Infrastructure", level: 4 },
+  { id: "s14", name: "Terraform", category: "Infrastructure", level: 3 },
 ];
 
 export const DEMO_EXPERIENCES: Experience[] = [
