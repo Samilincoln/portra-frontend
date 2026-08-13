@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Github, Linkedin, Twitter, Globe, Check, ExternalLink } from "lucide-react";
+import { Loader2, Github, Linkedin, Twitter } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ import {
   unlinkAccount,
   type OAuthProvider,
 } from "@/lib/oauth";
+import { Switch } from "@/components/ui/switch";
 
 function slugify(s: string) {
   return s
@@ -78,7 +79,6 @@ export function ProfileDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [slugEdited, setSlugEdited] = useState(false);
 
-  // Fetch linked OAuth accounts
   const { data: linkedAccounts = [] } = useQuery({
     queryKey: ["oauth-accounts"],
     queryFn: () => getLinkedAccounts(token),
@@ -92,13 +92,9 @@ export function ProfileDialog({
   async function connectProvider(provider: OAuthProvider) {
     try {
       const { url, code_verifier } = await getOAuthUrl(token, provider);
-
-      // Store code_verifier for Twitter PKCE flow (localStorage, not sessionStorage — popup can't access parent's sessionStorage)
       if (code_verifier) {
         localStorage.setItem("portra:twitter_code_verifier", code_verifier);
       }
-
-      // Open popup
       const width = 600;
       const height = 700;
       const left = window.innerWidth / 2 - width / 2;
@@ -108,8 +104,6 @@ export function ProfileDialog({
         `Connect ${provider}`,
         `width=${width},height=${height},left=${left},top=${top}`,
       );
-
-      // Poll for popup close
       const timer = setInterval(() => {
         if (popup?.closed) {
           clearInterval(timer);
@@ -198,6 +192,9 @@ export function ProfileDialog({
         .map((s) => s.trim())
         .filter(Boolean),
       social: {
+        github: form.github.trim() || undefined,
+        linkedin: form.linkedin.trim() || undefined,
+        twitter: form.twitter.trim() || undefined,
         website: form.website.trim() || undefined,
       },
     });
@@ -302,63 +299,26 @@ export function ProfileDialog({
             </p>
           </div>
 
-          <div className="space-y-3">
-            <Label className="text-sm">Social connections</Label>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {(["github", "linkedin", "twitter"] as const).map((provider) => {
+          <div className="space-y-2">
+            <Label className="text-base font-medium">Social connections</Label>
+            <div className="space-y-1">
+              {([
+                { provider: "github", icon: Github },
+                { provider: "linkedin", icon: Linkedin },
+                { provider: "twitter", icon: Twitter },
+              ] as const).map(({ provider, icon: Icon }) => {
                 const connected = isProviderConnected(provider);
                 return (
-                  <div
-                    key={provider}
-                    className="flex items-center justify-between rounded-lg border border-border p-3"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium capitalize">{provider}</span>
-                      {connected && (
-                        <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                          <Check className="h-3 w-3" /> Connected
-                        </span>
-                      )}
-                    </div>
-                    {connected ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
-                        onClick={() => disconnectProvider(provider)}
-                      >
-                        Disconnect
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        onClick={() => connectProvider(provider)}
-                      >
-                        <ExternalLink className="h-3 w-3" /> Connect
-                      </Button>
-                    )}
+                  <div key={provider} className="flex items-center gap-3">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium capitalize">{provider}</span>
+                    <Switch
+                      checked={connected}
+                      onCheckedChange={() => (connected ? disconnectProvider(provider) : connectProvider(provider))}
+                    />
                   </div>
                 );
               })}
-
-              {/* Website - Manual input */}
-              <div className="space-y-1.5">
-                <Label className="text-sm">Website</Label>
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <Input
-                    value={form.website}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, website: e.target.value }))
-                    }
-                    placeholder="https://yoursite.com"
-                  />
-                </div>
-              </div>
             </div>
           </div>
 
