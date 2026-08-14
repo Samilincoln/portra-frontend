@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
-import { Check, CreditCard, ExternalLink, Loader2, Receipt, Settings, Zap } from "lucide-react";
+import { AlertTriangle, Check, CreditCard, ExternalLink, Loader2, Receipt, Settings, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ import {
   getSubscriptionTier,
   getInvoices,
   createCheckoutSession,
+  downgradeSubscription,
   verifyPayment,
   type SubscriptionTierResponse,
   type Invoice,
@@ -87,6 +88,8 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
   const [selectedPlan, setSelectedPlan] = useState<TierId | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<"paystack" | "flutterwave">("paystack");
   const [billingOpen, setBillingOpen] = useState(false);
+  const [downgradeOpen, setDowngradeOpen] = useState(false);
+  const [downgradeTarget, setDowngradeTarget] = useState<TierId | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -171,6 +174,19 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
     setSelectedPlan(plan);
     setUpgradeOpen(true);
   }
+
+  const downgradeMutation = useMutation({
+    mutationFn: (plan: string) => downgradeSubscription(plan),
+    onSuccess: () => {
+      toast.success("Plan downgraded successfully.");
+      setDowngradeOpen(false);
+      setDowngradeTarget(null);
+      qc.invalidateQueries({ queryKey: ["billing", "subscription-tier"] });
+      qc.invalidateQueries({ queryKey: ["billing", "subscription-history"] });
+      qc.invalidateQueries({ queryKey: ["me"] });
+    },
+    onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not downgrade plan"),
+  });
 
   const sub = subQuery.data;
   const tierId = (sub?.tier as TierId) ?? (profile?.subscriptionTier as TierId) ?? "free";
@@ -286,7 +302,11 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
                       Current plan
                     </Button>
                   ) : isDowngrade ? (
-                    <Button variant="outline" className="w-full" disabled>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => { setDowngradeTarget(id); setDowngradeOpen(true); }}
+                    >
                       Downgrade
                     </Button>
                   ) : (
@@ -430,6 +450,63 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
                 <CreditCard className="mr-1.5 h-4 w-4" />
               )}
               Continue to payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Downgrade Dialog */}
+      <Dialog open={downgradeOpen} onOpenChange={setDowngradeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Downgrade to {downgradeTarget ? TIERS[downgradeTarget].label : ""}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to downgrade? You'll lose access to some features at the end of your current billing period.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-destructive">Downgrading will remove:</p>
+                <ul className="mt-1 space-y-1 text-muted-foreground">
+                  {tierId === "consultant" && downgradeTarget === "pro" && (
+                    <>
+                      <li>- Reduced portfolio limit (from 10 to 3)</li>
+                      <li>- Reduced storage (from 10 GB to 1 GB)</li>
+                    </>
+                  )}
+                  {tierId === "consultant" && downgradeTarget === "free" && (
+                    <>
+                      <li>- Reduced portfolio limit (from 10 to 1)</li>
+                      <li>- Reduced storage (from 10 GB to 50 MB)</li>
+                      <li>- Custom domain access</li>
+                      <li>- AI features</li>
+                      <li>- Analytics</li>
+                    </>
+                  )}
+                  {tierId === "pro" && downgradeTarget === "free" && (
+                    <>
+                      <li>- Reduced portfolio limit (from 3 to 1)</li>
+                      <li>- Reduced storage (from 1 GB to 50 MB)</li>
+                      <li>- Custom domain access</li>
+                      <li>- AI features</li>
+                      <li>- Analytics</li>
+                    </>
+                  )}
+                </ul>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDowngradeOpen(false); setDowngradeTarget(null); }}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={downgradeMutation.isPending}
+              onClick={() => { if (downgradeTarget) downgradeMutation.mutate(downgradeTarget); }}
+            >
+              {downgradeMutation.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+              Confirm downgrade
             </Button>
           </DialogFooter>
         </DialogContent>

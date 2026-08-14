@@ -55,7 +55,7 @@ function isPalette(v: string | null): v is PaletteId {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [palette, setPaletteState] = useState<PaletteId>("midnight");
+  const [palette, setPaletteState] = useState<PaletteId>("graphite");
   const [mode, setModeState] = useState<ColorMode>("light");
 
   // Hydrate from storage / system preference after mount (SSR safe).

@@ -85,6 +85,103 @@ const TABS = [
   { value: "ai-usage", label: "AI Usage", icon: Bot },
 ] as const;
 
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatCurrency(amount: number) {
+  const value = amount / 100;
+  return `₦${value.toLocaleString("en-NG", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+function formatTokens(n: number) {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
+
+function formatCost(n: number) {
+  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatPercent(n: number) {
+  return `${n.toFixed(1)}%`;
+}
+
+function formatDate(s: string) {
+  const d = new Date(s);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function StatCards({
+  isLoading,
+  cards,
+}: {
+  isLoading: boolean;
+  cards: { label: string; value: string; icon: React.ElementType; color: string; bg: string }[];
+}) {
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[100px] rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {cards.map((c) => (
+        <div key={c.label} className="rounded-xl border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-muted-foreground">{c.label}</span>
+            <div className={`${c.bg} rounded-lg p-2`}>
+              <c.icon className={`h-4 w-4 ${c.color}`} />
+            </div>
+          </div>
+          <p className="mt-2 text-2xl font-bold">{c.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border bg-card">
+      <div className="border-b px-4 py-3">
+        <h3 className="text-sm font-semibold">{title}</h3>
+      </div>
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
+
+function LoadingRows({ count, cols }: { count: number; cols: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <TableRow key={i}>
+          {Array.from({ length: cols }).map((_, j) => (
+            <TableCell key={j}>
+              <Skeleton className="h-4 w-full" />
+            </TableCell>
+          ))}
+        </TableRow>
+      ))}
+    </>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <TableRow>
+      <TableCell colSpan={99} className="py-12 text-center text-sm text-muted-foreground">
+        {message}
+      </TableCell>
+    </TableRow>
+  );
+}
+
 function AdminPage() {
   useAuth();
   const [days, setDays] = useState(30);
@@ -124,14 +221,6 @@ function AdminPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight flex items-center gap-2">
-            <Shield className="h-7 w-7" /> Admin Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Platform analytics and overview.
-          </p>
-        </div>
         <div className="flex gap-1">
           {RANGE_OPTIONS.map((opt) => (
             <Button
@@ -148,15 +237,12 @@ function AdminPage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            return (
-              <TabsTrigger key={t.value} value={t.value} className="gap-2">
-                <Icon className="h-4 w-4" />
-                {t.label}
-              </TabsTrigger>
-            );
-          })}
+          {TABS.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>
+              <t.icon className="mr-1.5 h-4 w-4" />
+              {t.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="users">
@@ -179,133 +265,6 @@ function AdminPage() {
         </TabsContent>
       </Tabs>
     </div>
-  );
-}
-
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatCost(cost: number): string {
-  if (cost < 0.01) return "<$0.01";
-  return `$${cost.toFixed(2)}`;
-}
-
-function formatTokens(tokens: number): string {
-  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`;
-  if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}K`;
-  return String(tokens);
-}
-
-function formatPercent(rate: number): string {
-  return `${(rate * 100).toFixed(1)}%`;
-}
-
-function formatCurrency(amountInCents: number): string {
-  const dollars = amountInCents / 100;
-  if (dollars >= 1_000_000) return `$${(dollars / 1_000_000).toFixed(1)}M`;
-  if (dollars >= 1_000) return `$${(dollars / 1_000).toFixed(1)}K`;
-  return `$${dollars.toFixed(2)}`;
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-// ── Shared UI ───────────────────────────────────────────────────────────────
-
-function SectionCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-2xl border border-border bg-card shadow-soft">
-      <div className="border-b border-border px-6 py-4">
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function StatCards({
-  cards,
-  isLoading,
-}: {
-  cards: {
-    label: string;
-    value: string;
-    icon: React.ElementType;
-    color: string;
-    bg: string;
-  }[];
-  isLoading: boolean;
-}) {
-  if (isLoading) {
-    return (
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: cards.length || 4 }).map((_, i) => (
-          <div key={i} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="mt-4 h-8 w-16" />
-          </div>
-        ))}
-      </section>
-    );
-  }
-
-  return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map((c) => {
-        const Icon = c.icon;
-        return (
-          <div
-            key={c.label}
-            className="rounded-2xl border border-border bg-card p-5 shadow-soft"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">
-                {c.label}
-              </span>
-              <div className={`grid h-9 w-9 place-items-center rounded-lg ${c.bg} ${c.color}`}>
-                <Icon className="h-4 w-4" />
-              </div>
-            </div>
-            <p className="mt-4 text-3xl font-semibold tracking-tight">{c.value}</p>
-          </div>
-        );
-      })}
-    </section>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <TableRow>
-      <TableCell colSpan={999} className="py-12 text-center text-sm text-muted-foreground">
-        {message}
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function LoadingRows({ count, cols }: { count: number; cols: number }) {
-  return (
-    <>
-      {Array.from({ length: count }).map((_, i) => (
-        <TableRow key={i}>
-          {Array.from({ length: cols }).map((_, j) => (
-            <TableCell key={j}>
-              <Skeleton className="h-4 w-full rounded" />
-            </TableCell>
-          ))}
-        </TableRow>
-      ))}
-    </>
   );
 }
 

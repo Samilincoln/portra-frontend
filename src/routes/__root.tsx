@@ -126,6 +126,8 @@ function RootShell({ children }: { children: ReactNode }) {
                 }
                 if (palette === "paper" || palette === "graphite") {
                   document.documentElement.dataset.theme = palette;
+                } else if (!palette) {
+                  document.documentElement.dataset.theme = "graphite";
                 }
               })();
             `,
