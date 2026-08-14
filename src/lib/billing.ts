@@ -33,6 +33,8 @@ export type CheckoutResponse = {
   checkout_url: string;
   reference: string;
   provider: string;
+  access_code?: string;
+  amount?: number;
 };
 
 export type PortalResponse = {

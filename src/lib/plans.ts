@@ -18,7 +18,7 @@ export const TIERS = {
   pro: {
     id: "pro",
     label: "Pro",
-    price: "~$15/mo",
+    price: "~$6/mo",
     profiles: 3,
     projects: Infinity,
     experiences: Infinity,
@@ -31,10 +31,10 @@ export const TIERS = {
     aiFeatures: true,
     analytics: true,
   },
-  team: {
-    id: "team",
-    label: "Business",
-    price: "~$39/mo",
+  consultant: {
+    id: "consultant",
+    label: "Consultant",
+    price: "$15/mo",
     profiles: 10,
     projects: Infinity,
     experiences: Infinity,
@@ -53,7 +53,7 @@ export type TierId = keyof typeof TIERS;
 
 export function getTier(id: string) {
   if (id === "pro") return TIERS.pro;
-  if (id === "team") return TIERS.team;
+  if (id === "creator" || id === "consultant") return TIERS.consultant;
   return TIERS.free;
 }
 
@@ -73,7 +73,7 @@ export function isAtLimit(
 
 export function getNextTier(tier: TierId): TierId | null {
   if (tier === "free") return "pro";
-  if (tier === "pro") return "team";
+  if (tier === "pro") return "consultant";
   return null;
 }
 
@@ -84,5 +84,5 @@ export function formatLimit(value: number): string {
 export function formatPlanDisplayText(tier: TierId): string {
   if (tier === "free") return "free Starter plan";
   if (tier === "pro") return "Pro plan";
-  return "Business plan";
+  return "Consultant plan";
 }

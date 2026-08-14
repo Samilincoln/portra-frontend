@@ -135,7 +135,7 @@ export function ProfilesTab() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Upgrade to Business
+                Upgrade to Consultant
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </Button>

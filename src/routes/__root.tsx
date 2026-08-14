@@ -132,6 +132,7 @@ function RootShell({ children }: { children: ReactNode }) {
           }}
         />
         <HeadContent />
+        <script src="https://js.paystack.co/v1/inline.js" async />
       </head>
       <body>
         {children}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -35,7 +35,11 @@ import {
   type Invoice,
 } from "@/lib/billing";
 
-const CALLBACK_URL = "https://portra-frontend.vercel.app/dashboard/settings";
+const PAYSTACK_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string;
+
+function getFlutterwaveCallbackUrl(plan: string) {
+  return `${window.location.origin}/dashboard/settings?tab=billing&payment=success&provider=flutterwave&plan=${plan}`;
+}
 
 const STATUS_MAP: Record<
   string,
@@ -65,7 +69,7 @@ function formatDate(iso: string): string {
 }
 
 export function BillingTab({ profile }: { profile?: { subscriptionTier?: string } }) {
-  useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -79,47 +83,54 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
     queryFn: () => getInvoices(),
   });
 
-  // Handle post-checkout verification from URL params
-  const [verifying, setVerifying] = useState(false);
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const status = params.get("status");
-    const reference = params.get("reference");
-    const provider = params.get("provider");
-
-    if (status === "success" && reference && provider) {
-      setVerifying(true);
-      verifyPayment(reference, provider)
-        .then(() => {
-          toast.success("Payment verified! Your plan has been activated.");
-          qc.invalidateQueries({ queryKey: ["billing", "subscription-tier"] });
-          qc.invalidateQueries({ queryKey: ["billing", "invoices"] });
-          qc.invalidateQueries({ queryKey: ["me"] });
-        })
-        .catch(() => {
-          toast.error("Could not verify payment. Please contact support.");
-        })
-        .finally(() => {
-          setVerifying(false);
-          window.history.replaceState({}, "", window.location.pathname);
-        });
-    }
-  }, [qc]);
-
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<TierId | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<"paystack" | "flutterwave">("paystack");
+
+  function openPaystackPopup(data: { access_code?: string; reference: string; provider: string; amount?: number }, plan: TierId) {
+    const Pop = window.PaystackPop;
+    if (!Pop) {
+      toast.error("Payment system not loaded. Please refresh.");
+      return;
+    }
+    const pop = Pop.setup({
+      key: PAYSTACK_KEY,
+      email: user?.email ?? "",
+      amount: data.amount ?? 0,
+      ref: data.reference,
+      access_code: data.access_code,
+      onClose: () => {
+        toast.info("Payment cancelled.");
+      },
+      callback: (response: { reference: string }) => {
+        verifyPayment(response.reference, data.provider)
+          .then(() => {
+            const planLabel = plan === "pro" ? "Pro" : plan === "consultant" ? "Consultant" : "";
+            toast.success(planLabel ? `Payment verified! Welcome to ${planLabel}.` : "Payment verified! Your plan has been activated.");
+            qc.invalidateQueries({ queryKey: ["billing", "subscription-tier"] });
+            qc.invalidateQueries({ queryKey: ["billing", "invoices"] });
+            qc.invalidateQueries({ queryKey: ["me"] });
+          })
+          .catch(() => {
+            toast.error("Could not verify payment. Please contact support.");
+          });
+      },
+    });
+    pop.openIframe();
+  }
 
   const checkoutMutation = useMutation({
     mutationFn: (plan: TierId) =>
       createCheckoutSession({
         plan,
         provider: selectedProvider,
-        callback_url: CALLBACK_URL,
+        callback_url: getFlutterwaveCallbackUrl(plan),
       }),
     onSuccess: (data) => {
       setUpgradeOpen(false);
-      if (data.checkout_url) {
+      if (selectedProvider === "paystack" && data.access_code && selectedPlan) {
+        openPaystackPopup(data, selectedPlan);
+      } else if (data.checkout_url) {
         window.location.href = data.checkout_url;
       }
     },
@@ -193,14 +204,6 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
         </div>
       </section>
 
-      {/* Verifying payment banner */}
-      {verifying && (
-        <div className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin text-accent" />
-          <p className="text-muted-foreground">Verifying your payment…</p>
-        </div>
-      )}
-
       {/* Plan Comparison */}
       <section className="rounded-2xl border border-border bg-card p-6 shadow-soft">
         <h2 className="text-lg font-semibold tracking-tight">Plans</h2>
@@ -210,8 +213,8 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
             const t = TIERS[id];
             const isCurrent = id === tierId;
             const isDowngrade =
-              (tierId === "team" && id === "pro") ||
-              (tierId === "team" && id === "free") ||
+              (tierId === "consultant" && id === "pro") ||
+              (tierId === "consultant" && id === "free") ||
               (tierId === "pro" && id === "free");
             return (
               <div
