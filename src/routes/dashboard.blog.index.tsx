@@ -48,19 +48,19 @@ export const Route = createFileRoute("/dashboard/blog/")({
 type StatusFilter = "all" | "published" | "draft";
 
 function BlogListPage() {
-  const { token } = useAuth();
+  useAuth();
   const { activeProfile, profiles } = useActiveProfile();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
 
   const userQuery = useQuery({
     queryKey: ["user-profile"],
-    queryFn: () => getMe(token),
+    queryFn: () => getMe(),
   });
 
   const query = useQuery({
     queryKey: ["blogs", activeProfile?.id],
-    queryFn: () => listBlogs(token, { profileId: activeProfile?.id }),
+    queryFn: () => listBlogs({ profileId: activeProfile?.id }),
   });
 
   const filtered = useMemo(() => {

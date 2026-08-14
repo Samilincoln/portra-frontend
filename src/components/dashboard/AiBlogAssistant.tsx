@@ -32,7 +32,7 @@ type Props = {
 };
 
 export function AiBlogAssistant({ title, content, projectId, projects, onApply }: Props) {
-  const { token } = useAuth();
+  useAuth();
   const [open, setOpen] = useState(false);
   const [context, setContext] = useState("");
   const [tone, setTone] = useState("");
@@ -57,7 +57,6 @@ export function AiBlogAssistant({ title, content, projectId, projects, onApply }
           existingContent: content || undefined,
           tone: tone || undefined,
           platform,
-          token,
         },
       }),
     onSuccess: (draft) => {

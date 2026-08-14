@@ -4,6 +4,7 @@ export type OAuthProvider = "github" | "linkedin" | "twitter" | "google";
 
 export type OAuthUrlResponse = {
   url: string;
+  state?: string;
   code_verifier?: string;
 };
 
@@ -13,68 +14,51 @@ export type LinkedAccount = {
   created_at: string;
 };
 
-export type SocialLoginResponse = {
-  access_token: string;
-  refresh_token?: string;
-};
-
 export async function getOAuthUrl(
-  token: string | null,
   provider: OAuthProvider,
 ): Promise<OAuthUrlResponse> {
   return apiFetch<OAuthUrlResponse>(
     `/api/v1/auth/${provider}/url`,
-    token,
   );
 }
 
-export async function getLinkedAccounts(
-  token: string | null,
-): Promise<LinkedAccount[]> {
+export async function getLinkedAccounts(): Promise<LinkedAccount[]> {
   return apiFetch<LinkedAccount[]>(
     "/api/v1/auth/oauth-accounts",
-    token,
   );
 }
 
 export async function unlinkAccount(
-  token: string | null,
   provider: OAuthProvider,
 ): Promise<{ message: string }> {
   return apiFetch<{ message: string }>(
     `/api/v1/auth/${provider}/unlink`,
-    token,
     { method: "DELETE" },
   );
 }
 
 export async function linkAccount(
-  token: string | null,
   provider: OAuthProvider,
   code: string,
   codeVerifier?: string,
 ): Promise<{ message: string }> {
+  const body: Record<string, string> = { code };
+  if (codeVerifier) body.code_verifier = codeVerifier;
   return apiFetch<{ message: string }>(
     `/api/v1/auth/${provider}/link`,
-    token,
-    {
-      method: "POST",
-      body: { code, code_verifier: codeVerifier },
-    },
+    { method: "POST", body },
   );
 }
 
 export async function socialLogin(
   provider: OAuthProvider,
   code: string,
-  codeVerifier?: string,
-): Promise<SocialLoginResponse> {
-  return apiFetch<SocialLoginResponse>(
+  state?: string,
+): Promise<{ access_token: string }> {
+  const body: Record<string, string> = { code };
+  if (state) body.state = state;
+  return apiFetch<{ access_token: string }>(
     `/api/v1/auth/${provider}/login`,
-    null,
-    {
-      method: "POST",
-      body: { code, code_verifier: codeVerifier },
-    },
+    { method: "POST", body },
   );
 }

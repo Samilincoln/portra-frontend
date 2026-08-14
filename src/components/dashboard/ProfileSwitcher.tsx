@@ -19,12 +19,12 @@ import { getTier, type TierId } from "@/lib/plans";
 import { useActiveProfile } from "@/lib/active-profile";
 
 export function ProfileSwitcher() {
-  const { token } = useAuth();
+  useAuth();
   const { activeProfile, profiles, isLoading, setActiveProfileId } = useActiveProfile();
 
   const limitsQuery = useQuery({
     queryKey: ["profile-limits"],
-    queryFn: () => getProfileLimits(token),
+    queryFn: () => getProfileLimits(),
   });
 
   const tierId = (limitsQuery.data?.tier as TierId) ?? "free";

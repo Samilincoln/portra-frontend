@@ -48,25 +48,24 @@ function toCamelCase(obj: Record<string, unknown>): UserProfile {
   return result as UserProfile;
 }
 
-export async function getMe(token: string | null): Promise<UserProfile> {
-  const raw = await apiFetch<unknown>("/api/v1/auth/me", token);
+export async function getMe(): Promise<UserProfile> {
+  const raw = await apiFetch<unknown>("/api/v1/auth/me");
   if (!raw || typeof raw !== "object") return {} as UserProfile;
   return toCamelCase(raw as Record<string, unknown>);
 }
 
 export async function updateMe(
-  token: string | null,
   input: Partial<UserProfile> & {
     currentPassword?: string;
     newPassword?: string;
   },
 ): Promise<UserProfile> {
-  return apiFetch<UserProfile>("/api/v1/users/me", token, {
+  return apiFetch<UserProfile>("/api/v1/users/me", {
     method: "PATCH",
     body: toSnakeCasePayload(input as Record<string, unknown>),
   });
 }
 
-export async function deleteMe(token: string | null): Promise<void> {
-  await apiFetch("/api/v1/users/me", token, { method: "DELETE" });
+export async function deleteMe(): Promise<void> {
+  await apiFetch("/api/v1/users/me", { method: "DELETE" });
 }

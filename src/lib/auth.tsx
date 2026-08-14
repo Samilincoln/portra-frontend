@@ -17,81 +17,123 @@ export type AuthUser = {
   email?: string;
   avatarUrl?: string;
   username?: string;
+  subscriptionTier?: string;
+  isAdmin?: boolean;
+  isActive?: boolean;
+  isVerified?: boolean;
 };
 
 type AuthState = {
-  token: string | null;
   user: AuthUser | null;
   isAuthenticated: boolean;
-  setSession: (payload: { token: string; user?: AuthUser | null }) => void;
+  loading: boolean;
+  setSession: (payload: { user?: AuthUser | null }) => void;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const STORAGE_KEY = "portra_auth";
+let _redirecting = false;
 
-function loadStoredAuth(): { token: string | null; user: AuthUser | null } {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return { token: parsed.token ?? null, user: parsed.user ?? null };
+function redirectToLogin() {
+  if (_redirecting) return;
+  _redirecting = true;
+  window.location.href = "/login";
+}
+
+let _refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefresh(): Promise<boolean> {
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL || ""}/api/v1/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      _refreshPromise = null;
     }
-  } catch {
-    // ignore parse errors
-  }
-  return { token: null, user: null };
+  })();
+  return _refreshPromise;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { token: storedToken, user: storedUser } = loadStoredAuth();
-    setToken(storedToken);
-    setUser(storedUser);
-    setHydrated(true);
+    fetch(`${API_BASE_URL || ""}/api/v1/auth/me`, {
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error("not authenticated");
+      })
+      .then((data) => {
+        setUser({
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          avatarUrl: data.avatar_url ?? data.avatarUrl,
+          username: data.username,
+          subscriptionTier: data.subscription_tier ?? data.subscriptionTier,
+          isAdmin: data.is_admin ?? data.isAdmin,
+          isActive: data.is_active ?? data.isActive,
+          isVerified: data.is_verified ?? data.isVerified,
+        });
+        setIsAuthenticated(true);
+      })
+      .catch(() => {
+        setUser(null);
+        setIsAuthenticated(false);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const setSession = useCallback(
-    ({ token: t, user: u }: { token: string; user?: AuthUser | null }) => {
-      setToken(t);
+    ({ user: u }: { user?: AuthUser | null }) => {
       setUser(u ?? null);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: t, user: u ?? null }));
-      } catch {
-        // ignore storage errors
-      }
+      setIsAuthenticated(Boolean(u));
     },
     [],
   );
 
-  const logout = useCallback(() => {
-    setToken(null);
-    setUser(null);
+  const logout = useCallback(async () => {
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      await fetch(`${API_BASE_URL || ""}/api/v1/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
     } catch {
-      // ignore storage errors
+      // proceed with client-side cleanup even if server call fails
     }
+    setUser(null);
+    setIsAuthenticated(false);
+    window.location.href = "/login";
   }, []);
 
   const value = useMemo<AuthState>(
     () => ({
-      token,
       user,
-      isAuthenticated: Boolean(token),
+      isAuthenticated,
+      loading,
       setSession,
       logout,
     }),
-    [token, user, setSession, logout],
+    [user, isAuthenticated, loading, setSession, logout],
   );
 
-  // Always provide context (with null values during SSR/hydration) to avoid "useAuth must be used within AuthProvider"
-  const contextValue = hydrated ? value : { ...value, token: null, user: null, isAuthenticated: false };
+  const contextValue = loading
+    ? { ...value, user: null, isAuthenticated: false }
+    : value;
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
@@ -104,45 +146,37 @@ export function useAuth() {
 
 export type AuthApiError = { message: string; fields?: Record<string, string> };
 
-let _redirecting = false;
-
-function redirectToLogin() {
-  if (_redirecting) return;
-  _redirecting = true;
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // ignore
-  }
-  window.location.href = "/login";
-}
-
-function getAuthHeaders(token: string | null): HeadersInit {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  return headers;
-}
-
 export async function apiFetch<T = unknown>(
   path: string,
-  token: string | null,
-  options?: { method?: "POST" | "GET" | "PATCH" | "DELETE"; body?: unknown },
+  options?: { method?: "POST" | "GET" | "PATCH" | "DELETE"; body?: unknown; _retried?: boolean },
 ): Promise<T> {
   const url = typeof window === "undefined" && API_BASE_URL
     ? `${API_BASE_URL}${path}`
     : path;
+
   let res: Response;
   try {
     res = await fetch(url, {
       method: options?.method ?? "GET",
-      headers: getAuthHeaders(token),
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: options?.method === "GET" ? undefined : JSON.stringify(options?.body),
     });
   } catch {
     throw { message: "Network error. Please try again." } satisfies AuthApiError;
   }
 
-  if (res.status === 401) {
+  // Auto-refresh on 401
+  if (res.status === 401 && !options?._retried && !path.includes("/auth/")) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      return apiFetch<T>(path, { ...options, _retried: true });
+    }
+    redirectToLogin();
+    throw { message: "Session expired. Redirecting to login…" } satisfies AuthApiError;
+  }
+
+  if (res.status === 401 && !path.includes("/auth/")) {
     redirectToLogin();
     throw { message: "Session expired. Redirecting to login…" } satisfies AuthApiError;
   }
@@ -169,9 +203,9 @@ export async function apiFetch<T = unknown>(
 export async function authFetch<T = unknown>(
   path: string,
   body: unknown,
-  options?: { token?: string | null; method?: "POST" | "GET" | "PATCH" | "DELETE" },
+  options?: { method?: "POST" | "GET" | "PATCH" | "DELETE" },
 ): Promise<T> {
-  return apiFetch<T>(path, options?.token ?? null, {
+  return apiFetch<T>(path, {
     method: options?.method ?? "POST",
     body,
   });

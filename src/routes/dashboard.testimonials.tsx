@@ -58,7 +58,7 @@ const schema = z.object({
 });
 
 function TestimonialsPage() {
-  const { token } = useAuth();
+  useAuth();
   const { activeProfile, profiles } = useActiveProfile();
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
@@ -66,16 +66,16 @@ function TestimonialsPage() {
 
   const userQuery = useQuery({
     queryKey: ["user-profile"],
-    queryFn: () => getMe(token),
+    queryFn: () => getMe(),
   });
 
   const query = useQuery({
     queryKey: ["testimonials", activeProfile?.id],
-    queryFn: () => listTestimonials(token, activeProfile?.id),
+    queryFn: () => listTestimonials(activeProfile?.id),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteTestimonial(token, id),
+    mutationFn: (id: string) => deleteTestimonial(id),
     onSuccess: () => {
       toast.success("Testimonial removed");
       qc.invalidateQueries({ queryKey: ["testimonials"] });
@@ -270,7 +270,7 @@ function AddTestimonialDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
-  const { token } = useAuth();
+  useAuth();
   const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const [form, setForm] = useState<TestimonialInput>({
@@ -283,7 +283,7 @@ function AddTestimonialDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
-    mutationFn: (input: TestimonialInput) => createTestimonial(token, input, activeProfile?.id),
+    mutationFn: (input: TestimonialInput) => createTestimonial(input, activeProfile?.id),
     onSuccess: () => {
       toast.success("Testimonial added");
       qc.invalidateQueries({ queryKey: ["testimonials"] });

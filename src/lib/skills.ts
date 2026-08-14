@@ -28,7 +28,6 @@ export type Skill = {
 export type SkillInput = Omit<Skill, "id">;
 
 export async function listSkills(
-  token: string | null,
   profileId?: string,
 ): Promise<Skill[]> {
   const params = new URLSearchParams();
@@ -36,13 +35,11 @@ export async function listSkills(
   const qs = params.toString();
   const data = await apiFetch<Skill[] | { skills: Skill[] }>(
     `/api/v1/skills${qs ? `?${qs}` : ""}`,
-    token,
   );
   return Array.isArray(data) ? data : (data.skills ?? []);
 }
 
 export async function createSkill(
-  token: string | null,
   input: SkillInput,
   profileId?: string,
 ): Promise<Skill> {
@@ -51,24 +48,21 @@ export async function createSkill(
   const qs = params.toString();
   return apiFetch<Skill>(
     `/api/v1/skills${qs ? `?${qs}` : ""}`,
-    token,
     { method: "POST", body: input },
   );
 }
 
 export async function deleteSkill(
-  token: string | null,
   id: string,
 ): Promise<void> {
-  await apiFetch(`/api/v1/skills/${id}`, token, { method: "DELETE" });
+  await apiFetch(`/api/v1/skills/${id}`, { method: "DELETE" });
 }
 
 export async function updateSkill(
-  token: string | null,
   id: string,
   input: Partial<SkillInput>,
 ): Promise<Skill> {
-  return apiFetch<Skill>(`/api/v1/skills/${id}`, token, {
+  return apiFetch<Skill>(`/api/v1/skills/${id}`, {
     method: "PATCH",
     body: input,
   });

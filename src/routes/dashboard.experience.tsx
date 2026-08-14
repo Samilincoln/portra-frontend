@@ -167,7 +167,7 @@ const emptyExp: ExpForm = {
 };
 
 function ExperienceSection() {
-  const { token } = useAuth();
+  useAuth();
   const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const [panelOpen, setPanelOpen] = useState(false);
@@ -176,12 +176,12 @@ function ExperienceSection() {
 
   const userQuery = useQuery({
     queryKey: ["user-profile"],
-    queryFn: () => getMe(token),
+    queryFn: () => getMe(),
   });
 
   const query = useQuery({
     queryKey: ["experiences", activeProfile?.id],
-    queryFn: () => listExperiences(token, { profileId: activeProfile?.id }),
+    queryFn: () => listExperiences({ profileId: activeProfile?.id }),
   });
 
   const sorted = useMemo(() => {
@@ -194,7 +194,7 @@ function ExperienceSection() {
   }, [query.data]);
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteExperience(token, id),
+    mutationFn: (id: string) => deleteExperience(id),
     onSuccess: () => {
       toast.success("Experience removed");
       qc.invalidateQueries({ queryKey: ["experiences"] });
@@ -409,7 +409,7 @@ function ExperiencePanel({
   onOpenChange: (o: boolean) => void;
   editing: Experience | null;
 }) {
-  const { token } = useAuth();
+  useAuth();
   const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const [form, setForm] = useState<ExpForm>(emptyExp);
@@ -436,7 +436,6 @@ function ExperiencePanel({
           technologies: aiTechnologies ? aiTechnologies.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
           achievements: aiAchievements || undefined,
           tone: aiTone,
-          token,
         },
       }),
     onSuccess: (result) => {
@@ -479,8 +478,8 @@ function ExperiencePanel({
   const mutation = useMutation({
     mutationFn: (input: ExperienceInput) =>
       editing
-        ? updateExperience(token, editing.id, input)
-        : createExperience(token, input, activeProfile?.id),
+        ? updateExperience(editing.id, input)
+        : createExperience(input, activeProfile?.id),
     onSuccess: () => {
       toast.success(editing ? "Experience updated" : "Experience added");
       qc.invalidateQueries({ queryKey: ["experiences"] });
@@ -819,7 +818,7 @@ function SkillLevelDots({ level }: { level: number }) {
 }
 
 function SkillsSection() {
-  const { token } = useAuth();
+  useAuth();
   const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const [name, setName] = useState("");
@@ -832,12 +831,12 @@ function SkillsSection() {
 
   const userQuery = useQuery({
     queryKey: ["user-profile"],
-    queryFn: () => getMe(token),
+    queryFn: () => getMe(),
   });
 
   const query = useQuery({
     queryKey: ["skills", activeProfile?.id],
-    queryFn: () => listSkills(token, activeProfile?.id),
+    queryFn: () => listSkills(activeProfile?.id),
   });
 
   const grouped = useMemo(() => {
@@ -857,7 +856,7 @@ function SkillsSection() {
 
   const addMutation = useMutation({
     mutationFn: () =>
-      createSkill(token, {
+      createSkill({
         name: name.trim(),
         category: (useCustom ? customCategory.trim() : category) || "Other",
         level,
@@ -874,7 +873,7 @@ function SkillsSection() {
   });
 
   const removeMutation = useMutation({
-    mutationFn: (id: string) => deleteSkill(token, id),
+    mutationFn: (id: string) => deleteSkill(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["skills"] });
       setConfirmDeleteSkill(null);
@@ -885,7 +884,7 @@ function SkillsSection() {
 
   const updateMutation = useMutation({
     mutationFn: (input: { id: string; name: string; category: string; level: number }) =>
-      updateSkill(token, input.id, { name: input.name, category: input.category, level: input.level }),
+      updateSkill(input.id, { name: input.name, category: input.category, level: input.level }),
     onSuccess: () => {
       toast.success("Skill updated");
       qc.invalidateQueries({ queryKey: ["skills"] });

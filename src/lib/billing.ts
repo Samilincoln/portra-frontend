@@ -51,41 +51,39 @@ export type VerifyResponse = {
   };
 };
 
-export async function getSubscriptionTier(token: string | null): Promise<SubscriptionTierResponse> {
-  return apiFetch<SubscriptionTierResponse>("/api/v1/subscription/tier", token);
+export async function getSubscriptionTier(): Promise<SubscriptionTierResponse> {
+  return apiFetch<SubscriptionTierResponse>("/api/v1/subscription/tier");
 }
 
-export async function getInvoices(token: string | null): Promise<InvoiceListResponse> {
-  return apiFetch<InvoiceListResponse>("/api/v1/billing/invoices", token);
+export async function getInvoices(): Promise<InvoiceListResponse> {
+  return apiFetch<InvoiceListResponse>("/api/v1/billing/invoices");
 }
 
 export async function createCheckoutSession(
-  token: string | null,
   body: {
     plan: string;
     provider: "paystack" | "flutterwave";
     callback_url: string;
   },
 ): Promise<CheckoutResponse> {
-  return apiFetch<CheckoutResponse>("/api/v1/billing/checkout", token, {
+  return apiFetch<CheckoutResponse>("/api/v1/billing/checkout", {
     method: "POST",
     body,
   });
 }
 
-export async function createPortalSession(token: string | null): Promise<PortalResponse> {
-  return apiFetch<PortalResponse>("/api/v1/billing/portal", token, {
+export async function createPortalSession(): Promise<PortalResponse> {
+  return apiFetch<PortalResponse>("/api/v1/billing/portal", {
     method: "POST",
     body: {},
   });
 }
 
 export async function verifyPayment(
-  token: string | null,
   reference: string,
   provider: string,
 ): Promise<VerifyResponse> {
-  return apiFetch<VerifyResponse>("/api/v1/billing/verify", token, {
+  return apiFetch<VerifyResponse>("/api/v1/billing/verify", {
     method: "POST",
     body: { reference, provider },
   });

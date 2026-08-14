@@ -73,7 +73,7 @@ export function ProfileDialog({
   onOpenChange: (open: boolean) => void;
   editing: Profile | null;
 }) {
-  const { token } = useAuth();
+  useAuth();
   const qc = useQueryClient();
   const [form, setForm] = useState<ProfileForm>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -81,7 +81,7 @@ export function ProfileDialog({
 
   const { data: linkedAccounts = [] } = useQuery({
     queryKey: ["oauth-accounts"],
-    queryFn: () => getLinkedAccounts(token),
+    queryFn: () => getLinkedAccounts(),
     enabled: open,
   });
 
@@ -91,7 +91,7 @@ export function ProfileDialog({
 
   async function connectProvider(provider: OAuthProvider) {
     try {
-      const { url, code_verifier } = await getOAuthUrl(token, provider);
+      const { url, code_verifier } = await getOAuthUrl(provider);
       if (code_verifier) {
         localStorage.setItem("portra:twitter_code_verifier", code_verifier);
       }
@@ -117,7 +117,7 @@ export function ProfileDialog({
 
   async function disconnectProvider(provider: OAuthProvider) {
     try {
-      await unlinkAccount(token, provider);
+      await unlinkAccount(provider);
       toast.success(`${provider} disconnected`);
       qc.invalidateQueries({ queryKey: ["oauth-accounts"] });
     } catch (err: { message?: string }) {
@@ -154,8 +154,8 @@ export function ProfileDialog({
   const mutation = useMutation({
     mutationFn: (input: ProfileInput) =>
       editing
-        ? updateProfile(token, editing.id, input)
-        : createProfile(token, input),
+        ? updateProfile(editing.id, input)
+        : createProfile(input),
     onSuccess: () => {
       toast.success(editing ? "Portfolio updated" : "Portfolio created");
       qc.invalidateQueries({ queryKey: ["profiles"] });

@@ -14,7 +14,6 @@ export type Testimonial = {
 export type TestimonialInput = Omit<Testimonial, "id" | "createdAt">;
 
 export async function listTestimonials(
-  token: string | null,
   profileId?: string,
 ): Promise<Testimonial[]> {
   const params = new URLSearchParams();
@@ -22,13 +21,11 @@ export async function listTestimonials(
   const qs = params.toString();
   const data = await apiFetch<Testimonial[] | { testimonials: Testimonial[] }>(
     `/api/v1/testimonials${qs ? `?${qs}` : ""}`,
-    token,
   );
   return Array.isArray(data) ? data : (data.testimonials ?? []);
 }
 
 export async function createTestimonial(
-  token: string | null,
   input: TestimonialInput,
   profileId?: string,
 ): Promise<Testimonial> {
@@ -37,14 +34,12 @@ export async function createTestimonial(
   const qs = params.toString();
   return apiFetch<Testimonial>(
     `/api/v1/testimonials${qs ? `?${qs}` : ""}`,
-    token,
     { method: "POST", body: input },
   );
 }
 
 export async function deleteTestimonial(
-  token: string | null,
   id: string,
 ): Promise<void> {
-  await apiFetch(`/api/v1/testimonials/${id}`, token, { method: "DELETE" });
+  await apiFetch(`/api/v1/testimonials/${id}`, { method: "DELETE" });
 }

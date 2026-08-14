@@ -37,7 +37,7 @@ import { getTier, formatLimit, type TierId } from "@/lib/plans";
 import { ProfileDialog } from "./ProfileDialog";
 
 export function ProfilesTab() {
-  const { token } = useAuth();
+  useAuth();
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
@@ -45,12 +45,12 @@ export function ProfilesTab() {
 
   const profilesQuery = useQuery({
     queryKey: ["profiles"],
-    queryFn: () => listProfiles(token),
+    queryFn: () => listProfiles(),
   });
 
   const limitsQuery = useQuery({
     queryKey: ["profile-limits"],
-    queryFn: () => getProfileLimits(token),
+    queryFn: () => getProfileLimits(),
   });
 
   const profiles = profilesQuery.data ?? [];
@@ -61,7 +61,7 @@ export function ProfilesTab() {
   const atLimit = profiles.length >= maxProfiles;
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteProfile(token, id),
+    mutationFn: (id: string) => deleteProfile(id),
     onSuccess: () => {
       toast.success("Portfolio deleted");
       qc.invalidateQueries({ queryKey: ["profiles"] });
@@ -73,7 +73,7 @@ export function ProfilesTab() {
   });
 
   const setDefaultMutation = useMutation({
-    mutationFn: (id: string) => setDefaultProfile(token, id),
+    mutationFn: (id: string) => setDefaultProfile(id),
     onSuccess: () => {
       toast.success("Default portfolio updated");
       qc.invalidateQueries({ queryKey: ["profiles"] });

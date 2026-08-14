@@ -31,7 +31,6 @@ export type BlogInput = {
 };
 
 export async function listBlogs(
-  token: string | null,
   params?: { published_only?: boolean; skip?: number; limit?: number; profileId?: string }
 ): Promise<BlogPost[]> {
   const search = new URLSearchParams();
@@ -43,20 +42,17 @@ export async function listBlogs(
   const qs = search.toString();
   const data = await apiFetch<BlogPost[] | { posts: BlogPost[] }>(
     `/api/v1/blog${qs ? `?${qs}` : ""}`,
-    token,
   );
   return Array.isArray(data) ? data : (data.posts ?? []);
 }
 
 export async function getBlog(
-  token: string | null,
   id: string,
 ): Promise<BlogPost> {
-  return apiFetch<BlogPost>(`/api/v1/blog/${id}`, token);
+  return apiFetch<BlogPost>(`/api/v1/blog/${id}`);
 }
 
 export async function createBlog(
-  token: string | null,
   input: BlogInput,
   profileId?: string,
 ): Promise<BlogPost> {
@@ -65,24 +61,21 @@ export async function createBlog(
   const qs = params.toString();
   return apiFetch<BlogPost>(
     `/api/v1/blog${qs ? `?${qs}` : ""}`,
-    token,
     { method: "POST", body: input },
   );
 }
 
 export async function updateBlog(
-  token: string | null,
   id: string,
   input: Partial<BlogInput>,
 ): Promise<BlogPost> {
-  return apiFetch<BlogPost>(`/api/v1/blog/${id}`, token, { method: "PATCH", body: input });
+  return apiFetch<BlogPost>(`/api/v1/blog/${id}`, { method: "PATCH", body: input });
 }
 
 export async function deleteBlog(
-  token: string | null,
   id: string,
 ): Promise<void> {
-  await apiFetch(`/api/v1/blog/${id}`, token, { method: "DELETE" });
+  await apiFetch(`/api/v1/blog/${id}`, { method: "DELETE" });
 }
 
 /**

@@ -48,14 +48,14 @@ export const Route = createFileRoute("/dashboard/settings")({
 });
 
 function SettingsPage() {
-  const { token, logout } = useAuth();
+  const { logout } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { tab } = useSearch({ from: "/dashboard/settings" });
   const [activeTab, setActiveTab] = useState(tab ?? "profile");
   const query = useQuery({
     queryKey: ["me"],
-    queryFn: () => getMe(token),
+    queryFn: () => getMe(),
   });
 
   useEffect(() => {
@@ -150,7 +150,7 @@ function SectionCard({
 }
 
 function ProfileTab({ profile, onSaved }: { profile: UserProfile; onSaved: () => void }) {
-  const { token } = useAuth();
+  useAuth();
   const qc = useQueryClient();
   const [form, setForm] = useState<UserProfile>(profile);
   useEffect(() => setForm(profile), [profile]);
@@ -158,7 +158,7 @@ function ProfileTab({ profile, onSaved }: { profile: UserProfile; onSaved: () =>
 
   const { data: linkedAccounts = [] } = useQuery({
     queryKey: ["oauth-accounts"],
-    queryFn: () => getLinkedAccounts(token),
+    queryFn: () => getLinkedAccounts(),
   });
 
   function isProviderConnected(provider: OAuthProvider): boolean {
@@ -167,7 +167,7 @@ function ProfileTab({ profile, onSaved }: { profile: UserProfile; onSaved: () =>
 
   async function connectProvider(provider: OAuthProvider) {
     try {
-      const { url, code_verifier } = await getOAuthUrl(token, provider);
+      const { url, code_verifier } = await getOAuthUrl(provider);
       if (code_verifier) {
         localStorage.setItem("portra:twitter_code_verifier", code_verifier);
       }
@@ -193,7 +193,7 @@ function ProfileTab({ profile, onSaved }: { profile: UserProfile; onSaved: () =>
 
   async function disconnectProvider(provider: OAuthProvider) {
     try {
-      await unlinkAccount(token, provider);
+      await unlinkAccount(provider);
       toast.success(`${provider} disconnected`);
       qc.invalidateQueries({ queryKey: ["oauth-accounts"] });
     } catch (err: { message?: string }) {
@@ -220,7 +220,7 @@ function ProfileTab({ profile, onSaved }: { profile: UserProfile; onSaved: () =>
   }
 
   const mutation = useMutation({
-    mutationFn: (input: Partial<UserProfile>) => updateMe(token, input),
+    mutationFn: (input: Partial<UserProfile>) => updateMe(input),
     onSuccess: () => {
       toast.success("Profile saved");
       onSaved();
@@ -343,7 +343,7 @@ function ProfileTab({ profile, onSaved }: { profile: UserProfile; onSaved: () =>
 }
 
 function PortfolioTab({ profile, onSaved }: { profile: UserProfile; onSaved: () => void }) {
-  const { token } = useAuth();
+  useAuth();
   const { palette, setPalette, mode, setMode } = useTheme();
   const [form, setForm] = useState<UserProfile>(profile);
   useEffect(() => setForm(profile), [profile]);
@@ -357,7 +357,7 @@ function PortfolioTab({ profile, onSaved }: { profile: UserProfile; onSaved: () 
   }, [profile.theme, palette, setPalette]);
 
   const mutation = useMutation({
-    mutationFn: (input: Partial<UserProfile>) => updateMe(token, input),
+    mutationFn: (input: Partial<UserProfile>) => updateMe(input),
     onSuccess: () => {
       toast.success("Portfolio saved");
       onSaved();
@@ -480,7 +480,7 @@ function PortfolioTab({ profile, onSaved }: { profile: UserProfile; onSaved: () 
 }
 
 function AccountTab({ profile, onDeleted }: { profile: UserProfile; onDeleted: () => void }) {
-  const { token } = useAuth();
+  useAuth();
   const [email, setEmail] = useState(profile.email ?? "");
   useEffect(() => setEmail(profile.email ?? ""), [profile.email]);
   const [current, setCurrent] = useState("");
@@ -489,13 +489,13 @@ function AccountTab({ profile, onDeleted }: { profile: UserProfile; onDeleted: (
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const emailMutation = useMutation({
-    mutationFn: () => updateMe(token, { email }),
+    mutationFn: () => updateMe({ email }),
     onSuccess: () => toast.success("Email updated"),
     onError: (err: { message?: string }) => toast.error(err?.message ?? "Could not update"),
   });
 
   const passwordMutation = useMutation({
-    mutationFn: () => updateMe(token, { currentPassword: current, newPassword: next }),
+    mutationFn: () => updateMe({ currentPassword: current, newPassword: next }),
     onSuccess: () => {
       toast.success("Password updated");
       setCurrent("");
@@ -506,7 +506,7 @@ function AccountTab({ profile, onDeleted }: { profile: UserProfile; onDeleted: (
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteMe(token),
+    mutationFn: () => deleteMe(),
     onSuccess: () => {
       toast.success("Account deleted");
       onDeleted();

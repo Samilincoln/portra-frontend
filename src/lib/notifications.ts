@@ -12,24 +12,19 @@ export type Notification = {
   link?: string;
 };
 
-export async function listNotifications(
-  token: string | null,
-): Promise<Notification[]> {
+export async function listNotifications(): Promise<Notification[]> {
   const data = await apiFetch<
     Notification[] | { notifications: Notification[] }
-  >("/api/v1/notifications", token);
+  >("/api/v1/notifications");
   return Array.isArray(data) ? data : (data.notifications ?? []);
 }
 
 export async function markNotificationRead(
-  token: string,
   id: string,
 ): Promise<void> {
-  await apiFetch(`/api/v1/notifications/${id}/read`, token, { method: "PATCH" });
+  await apiFetch(`/api/v1/notifications/${id}/read`, { method: "PATCH" });
 }
 
-export async function markAllNotificationsRead(
-  token: string,
-): Promise<void> {
-  await apiFetch("/api/v1/notifications/read-all", token, { method: "PATCH" });
+export async function markAllNotificationsRead(): Promise<void> {
+  await apiFetch("/api/v1/notifications/read-all", { method: "PATCH" });
 }

@@ -12,10 +12,10 @@ export const Route = createFileRoute("/dashboard/blog/$id/edit")({
 
 function EditBlogPage() {
   const { id } = Route.useParams();
-  const { token } = useAuth();
+  useAuth();
   const query = useQuery({
     queryKey: ["blogs", id],
-    queryFn: () => getBlog(token, id),
+    queryFn: () => getBlog(id),
   });
 
   if (query.isLoading) {

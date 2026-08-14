@@ -52,7 +52,7 @@ export const Route = createFileRoute("/dashboard/projects/")({
 type StatusFilter = "all" | "published" | "draft";
 
 function ProjectsPage() {
-  const { token } = useAuth();
+  useAuth();
   const { activeProfile, profiles } = useActiveProfile();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -61,18 +61,18 @@ function ProjectsPage() {
 
   const userQuery = useQuery({
     queryKey: ["user-profile"],
-    queryFn: () => getMe(token),
+    queryFn: () => getMe(),
   });
 
   const query = useQuery({
     queryKey: ["projects", activeProfile?.id],
-    queryFn: () => listProjects(token, activeProfile?.id),
+    queryFn: () => listProjects(activeProfile?.id),
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteProject(token, id),
+    mutationFn: (id: string) => deleteProject(id),
     onSuccess: () => {
       toast.success("Project deleted");
       queryClient.invalidateQueries({ queryKey: ["projects"] });

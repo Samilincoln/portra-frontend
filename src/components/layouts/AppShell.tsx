@@ -135,7 +135,7 @@ function SidebarInner({ pathname, onNavigate, isAdmin }: { pathname: string; onN
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user, token, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -144,16 +144,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const notificationsQuery = useQuery({
     queryKey: ["notifications"],
-    queryFn: () => listNotifications(token),
+    queryFn: () => listNotifications(),
   });
 
   const markReadMutation = useMutation({
-    mutationFn: (id: string) => markNotificationRead(token!, id),
+    mutationFn: (id: string) => markNotificationRead(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
   const markAllReadMutation = useMutation({
-    mutationFn: () => markAllNotificationsRead(token!),
+    mutationFn: () => markAllNotificationsRead(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
@@ -162,7 +162,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const meQuery = useQuery({
     queryKey: ["me"],
-    queryFn: () => getMe(token),
+    queryFn: () => getMe(),
   });
   const isAdmin = meQuery.data?.isAdmin === true;
 

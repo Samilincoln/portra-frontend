@@ -14,7 +14,7 @@ const PROVIDERS: OAuthProvider[] = ["github", "linkedin", "twitter", "google"];
 
 function OAuthCallbackPage() {
   const { provider } = Route.useParams();
-  const { token, setSession } = useAuth();
+  const { isAuthenticated, setSession } = useAuth();
   const navigate = useNavigate();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +28,7 @@ function OAuthCallbackPage() {
 
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
+    const state = params.get("state");
 
     if (!code) {
       setStatus("error");
@@ -35,19 +36,19 @@ function OAuthCallbackPage() {
       return;
     }
 
-    // For Twitter, retrieve the code_verifier from localStorage (shared across same-origin windows)
+    // For Twitter, retrieve the code_verifier from sessionStorage
     let codeVerifier: string | undefined;
     if (provider === "twitter") {
-      codeVerifier = localStorage.getItem("portra:twitter_code_verifier") ?? undefined;
+      codeVerifier = sessionStorage.getItem("portra:twitter_code_verifier") ?? undefined;
       if (codeVerifier) {
-        localStorage.removeItem("portra:twitter_code_verifier");
+        sessionStorage.removeItem("portra:twitter_code_verifier");
       }
     }
 
     // Branch based on auth state: logged in = link, not logged in = login
-    if (token) {
+    if (isAuthenticated) {
       // Already logged in — link account
-      linkAccount(token, provider as OAuthProvider, code, codeVerifier)
+      linkAccount(provider as OAuthProvider, code, codeVerifier)
         .then(() => {
           setStatus("success");
           setTimeout(() => {
@@ -59,28 +60,46 @@ function OAuthCallbackPage() {
           setError(err?.message ?? "Failed to connect account");
         });
     } else {
-      // Not logged in — social login
-      socialLogin(provider as OAuthProvider, code, codeVerifier)
-        .then((data) => {
-          const accessToken = data.access_token;
-          if (!accessToken) {
-            throw { message: "No access token received" };
-          }
-          setSession({ token: accessToken });
-          setStatus("success");
-          // Redirect to dashboard after a short delay
-          setTimeout(() => {
-            navigate({ to: "/dashboard" });
-          }, 1500);
+      // Not logged in — social login (backend sets cookies)
+      socialLogin(provider as OAuthProvider, code, state ?? undefined)
+        .then(() => {
+          // Backend has set the auth cookies
+          // Fetch user from cookie-authenticated endpoint
+          import("@/lib/users").then(({ getMe }) =>
+            getMe()
+              .then((profile) => {
+                setSession({
+                  user: {
+                    id: profile.id,
+                    name: profile.name,
+                    email: profile.email,
+                    username: profile.username,
+                    subscriptionTier: profile.subscriptionTier,
+                    isAdmin: profile.isAdmin,
+                  },
+                });
+                setStatus("success");
+                setTimeout(() => {
+                  navigate({ to: "/dashboard" });
+                }, 1500);
+              })
+              .catch(() => {
+                // Cookie set but user fetch failed — redirect anyway
+                setStatus("success");
+                setTimeout(() => {
+                  navigate({ to: "/dashboard" });
+                }, 1500);
+              }),
+          );
         })
         .catch((err: { message?: string }) => {
           setStatus("error");
           setError(err?.message ?? "Failed to sign in");
         });
     }
-  }, [provider, token, setSession, navigate]);
+  }, [provider, isAuthenticated, setSession, navigate]);
 
-  const isLoginFlow = !token;
+  const isLoginFlow = !isAuthenticated;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">

@@ -15,7 +15,7 @@ const ActiveProfileContext = createContext<ActiveProfileContextValue | null>(nul
 const STORAGE_KEY = "portra:activeProfileId";
 
 export function ActiveProfileProvider({ children }: { children: ReactNode }) {
-  const { token } = useAuth();
+  useAuth();
   const [activeProfileId, setActiveProfileIdState] = useState<string | null>(() => {
     try {
       return localStorage.getItem(STORAGE_KEY);
@@ -26,8 +26,7 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
 
   const profilesQuery = useQuery({
     queryKey: ["profiles"],
-    queryFn: () => listProfiles(token),
-    enabled: Boolean(token),
+    queryFn: () => listProfiles(),
   });
 
   const profiles = profilesQuery.data ?? [];

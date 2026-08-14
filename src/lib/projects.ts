@@ -101,7 +101,6 @@ export type CreateProjectInput = {
 };
 
 export async function listProjects(
-  token: string | null,
   profileId?: string,
 ): Promise<Project[]> {
   const params = new URLSearchParams();
@@ -109,14 +108,12 @@ export async function listProjects(
   const qs = params.toString();
   const data = await apiFetch<Project[] | { projects: Project[] }>(
     `/api/v1/projects${qs ? `?${qs}` : ""}`,
-    token,
   );
   const projects = Array.isArray(data) ? data : (data.projects ?? []);
   return projects.map(normalizeProject);
 }
 
 export async function createProject(
-  token: string | null,
   input: CreateProjectInput,
   profileId?: string,
 ): Promise<Project> {
@@ -125,7 +122,6 @@ export async function createProject(
   const qs = params.toString();
   const data = await apiFetch<Project | { project: Project }>(
     `/api/v1/projects${qs ? `?${qs}` : ""}`,
-    token,
     {
       method: "POST",
       body: toSnakeCasePayload(input as unknown as Record<string, unknown>),
@@ -136,20 +132,18 @@ export async function createProject(
 }
 
 export async function getProject(
-  token: string | null,
   id: string,
 ): Promise<Project> {
-  const data = await apiFetch<Project | { project: Project }>(`/api/v1/projects/${id}`, token);
+  const data = await apiFetch<Project | { project: Project }>(`/api/v1/projects/${id}`);
   const project = data && "project" in data ? (data as { project: Project }).project : data as Project;
   return normalizeProject(project);
 }
 
 export async function updateProject(
-  token: string | null,
   id: string,
   input: Partial<CreateProjectInput> & { published?: boolean },
 ): Promise<Project> {
-  const data = await apiFetch<Project | { project: Project }>(`/api/v1/projects/${id}`, token, {
+  const data = await apiFetch<Project | { project: Project }>(`/api/v1/projects/${id}`, {
     method: "PATCH",
     body: toSnakeCasePayload(input as unknown as Record<string, unknown>),
   });
@@ -158,21 +152,18 @@ export async function updateProject(
 }
 
 export async function deleteProject(
-  token: string | null,
   id: string,
 ): Promise<void> {
-  await apiFetch(`/api/v1/projects/${id}`, token, { method: "DELETE" });
+  await apiFetch(`/api/v1/projects/${id}`, { method: "DELETE" });
 }
 
 export async function generateProjectSummary(
-  token: string | null,
   id: string,
 ): Promise<{ shortDescription?: string; architecture?: string; solution?: string; problem?: string; results?: string }> {
-  return apiFetch(`/api/v1/projects/${id}/generate-summary`, token, { method: "POST" });
+  return apiFetch(`/api/v1/projects/${id}/generate-summary`, { method: "POST" });
 }
 
 export async function generateFromGithub(
-  token: string | null,
   githubUrl: string,
   projectId?: string,
 ): Promise<{
@@ -185,7 +176,7 @@ export async function generateFromGithub(
   technologies: string[];
   tags: string[];
 }> {
-  return apiFetch("/api/v1/projects/ai-summary", token, {
+  return apiFetch("/api/v1/projects/ai-summary", {
     method: "POST",
     body: { github_url: githubUrl, ...(projectId ? { project_id: projectId } : {}) },
   });

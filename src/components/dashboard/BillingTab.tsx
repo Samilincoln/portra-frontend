@@ -65,18 +65,18 @@ function formatDate(iso: string): string {
 }
 
 export function BillingTab({ profile }: { profile?: { subscriptionTier?: string } }) {
-  const { token } = useAuth();
+  useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
 
   const subQuery = useQuery({
     queryKey: ["billing", "subscription-tier"],
-    queryFn: () => getSubscriptionTier(token),
+    queryFn: () => getSubscriptionTier(),
   });
 
   const invoicesQuery = useQuery({
     queryKey: ["billing", "invoices"],
-    queryFn: () => getInvoices(token),
+    queryFn: () => getInvoices(),
   });
 
   // Handle post-checkout verification from URL params
@@ -87,9 +87,9 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
     const reference = params.get("reference");
     const provider = params.get("provider");
 
-    if (status === "success" && reference && provider && token) {
+    if (status === "success" && reference && provider) {
       setVerifying(true);
-      verifyPayment(token, reference, provider)
+      verifyPayment(reference, provider)
         .then(() => {
           toast.success("Payment verified! Your plan has been activated.");
           qc.invalidateQueries({ queryKey: ["billing", "subscription-tier"] });
@@ -104,7 +104,7 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
           window.history.replaceState({}, "", window.location.pathname);
         });
     }
-  }, [token, qc]);
+  }, [qc]);
 
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<TierId | null>(null);
@@ -112,7 +112,7 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
 
   const checkoutMutation = useMutation({
     mutationFn: (plan: TierId) =>
-      createCheckoutSession(token, {
+      createCheckoutSession({
         plan,
         provider: selectedProvider,
         callback_url: CALLBACK_URL,
@@ -129,7 +129,7 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
   });
 
   const portalMutation = useMutation({
-    mutationFn: () => createPortalSession(token),
+    mutationFn: () => createPortalSession(),
     onSuccess: (data) => {
       if (data.portal_url) window.open(data.portal_url, "_blank");
     },

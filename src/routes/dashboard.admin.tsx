@@ -86,13 +86,13 @@ const TABS = [
 ] as const;
 
 function AdminPage() {
-  const { token } = useAuth();
+  useAuth();
   const [days, setDays] = useState(30);
   const [tab, setTab] = useState("users");
 
   const meQuery = useQuery({
     queryKey: ["me"],
-    queryFn: () => getMe(token),
+    queryFn: () => getMe(),
   });
 
   if (meQuery.isLoading) {
@@ -160,22 +160,22 @@ function AdminPage() {
         </TabsList>
 
         <TabsContent value="users">
-          <UsersTab token={token} days={days} />
+          <UsersTab days={days} />
         </TabsContent>
         <TabsContent value="portfolios">
-          <PortfoliosTab token={token} days={days} />
+          <PortfoliosTab days={days} />
         </TabsContent>
         <TabsContent value="features">
-          <FeaturesTab token={token} days={days} />
+          <FeaturesTab days={days} />
         </TabsContent>
         <TabsContent value="social">
-          <SocialTab token={token} days={days} />
+          <SocialTab days={days} />
         </TabsContent>
         <TabsContent value="billing">
-          <BillingAnalyticsTab token={token} days={days} />
+          <BillingAnalyticsTab days={days} />
         </TabsContent>
         <TabsContent value="ai-usage">
-          <AiUsageTab token={token} days={days} />
+          <AiUsageTab days={days} />
         </TabsContent>
       </Tabs>
     </div>
@@ -311,10 +311,10 @@ function LoadingRows({ count, cols }: { count: number; cols: number }) {
 
 // ── AI Usage Tab ────────────────────────────────────────────────────────────
 
-function AiUsageTab({ token, days }: { token: string | null; days: number }) {
+function AiUsageTab({ days }: { days: number }) {
   const query = useQuery({
     queryKey: ["admin-ai-usage", days],
-    queryFn: () => getAiUsage(token, days),
+    queryFn: () => getAiUsage(days),
   });
 
   const data = query.data;
@@ -490,15 +490,15 @@ function AiUsageTab({ token, days }: { token: string | null; days: number }) {
 
 // ── Users Tab ───────────────────────────────────────────────────────────────
 
-function UsersTab({ token, days }: { token: string | null; days: number }) {
+function UsersTab({ days }: { days: number }) {
   const statsQuery = useQuery({
     queryKey: ["admin-stats", days],
-    queryFn: () => getPlatformStats(token, days),
+    queryFn: () => getPlatformStats(days),
   });
 
   const usersQuery = useQuery({
     queryKey: ["admin-users", days],
-    queryFn: () => getAdminUsers(token, days),
+    queryFn: () => getAdminUsers(days),
   });
 
   const stats = statsQuery.data;
@@ -654,15 +654,15 @@ function UsersTab({ token, days }: { token: string | null; days: number }) {
 
 // ── Portfolios Tab ──────────────────────────────────────────────────────────
 
-function PortfoliosTab({ token, days }: { token: string | null; days: number }) {
+function PortfoliosTab({ days }: { days: number }) {
   const contentQuery = useQuery({
     queryKey: ["admin-content-stats", days],
-    queryFn: () => getContentStats(token, days),
+    queryFn: () => getContentStats(days),
   });
 
   const profilesQuery = useQuery({
     queryKey: ["admin-profiles", days],
-    queryFn: () => getAdminProfiles(token, days),
+    queryFn: () => getAdminProfiles(days),
   });
 
   const content = contentQuery.data;
@@ -819,10 +819,10 @@ function PortfoliosTab({ token, days }: { token: string | null; days: number }) 
 
 // ── Features Tab ────────────────────────────────────────────────────────────
 
-function FeaturesTab({ token, days }: { token: string | null; days: number }) {
+function FeaturesTab({ days }: { days: number }) {
   const query = useQuery({
     queryKey: ["admin-features", days],
-    queryFn: () => getFeatureUsage(token, days),
+    queryFn: () => getFeatureUsage(days),
   });
 
   const data = query.data;
@@ -933,15 +933,15 @@ function FeaturesTab({ token, days }: { token: string | null; days: number }) {
 
 // ── Social Tab ──────────────────────────────────────────────────────────────
 
-function SocialTab({ token, days }: { token: string | null; days: number }) {
+function SocialTab({ days }: { days: number }) {
   const oauthQuery = useQuery({
     queryKey: ["admin-oauth", days],
-    queryFn: () => getOAuthStats(token, days),
+    queryFn: () => getOAuthStats(days),
   });
 
   const sharesQuery = useQuery({
     queryKey: ["admin-shares", days],
-    queryFn: () => getSocialShares(token, days),
+    queryFn: () => getSocialShares(days),
   });
 
   const oauth = oauthQuery.data;
@@ -1097,15 +1097,15 @@ function SocialTab({ token, days }: { token: string | null; days: number }) {
 
 // ── Billing Tab ─────────────────────────────────────────────────────────────
 
-function BillingAnalyticsTab({ token, days }: { token: string | null; days: number }) {
+function BillingAnalyticsTab({ days }: { days: number }) {
   const subsQuery = useQuery({
     queryKey: ["admin-subscriptions", days],
-    queryFn: () => getSubscriptionStats(token, days),
+    queryFn: () => getSubscriptionStats(days),
   });
 
   const revenueQuery = useQuery({
     queryKey: ["admin-revenue", days],
-    queryFn: () => getRevenueStats(token, days),
+    queryFn: () => getRevenueStats(days),
   });
 
   const subs = subsQuery.data;

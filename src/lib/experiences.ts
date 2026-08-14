@@ -47,7 +47,6 @@ function safeToCamelCase(item: unknown): Experience | null {
 }
 
 export async function listExperiences(
-  token: string | null,
   params?: { skip?: number; limit?: number; profileId?: string }
 ): Promise<Experience[]> {
   const search = new URLSearchParams();
@@ -58,7 +57,6 @@ export async function listExperiences(
   const qs = search.toString();
   const raw = await apiFetch<unknown>(
     `/api/v1/experiences${qs ? `?${qs}` : ""}`,
-    token,
   );
 
   let items: unknown[];
@@ -74,7 +72,6 @@ export async function listExperiences(
 }
 
 export async function createExperience(
-  token: string | null,
   input: ExperienceInput,
   profileId?: string,
 ): Promise<Experience> {
@@ -83,32 +80,28 @@ export async function createExperience(
   const qs = params.toString();
   const res = await apiFetch<Experience>(
     `/api/v1/experiences${qs ? `?${qs}` : ""}`,
-    token,
     { method: "POST", body: toSnakeCase(input as Record<string, unknown>) },
   );
   return toCamelCase(res as unknown as Record<string, unknown>);
 }
 
 export async function getExperience(
-  token: string | null,
   id: string,
 ): Promise<Experience> {
-  const res = await apiFetch<Experience>(`/api/v1/experiences/${id}`, token);
+  const res = await apiFetch<Experience>(`/api/v1/experiences/${id}`);
   return toCamelCase(res as unknown as Record<string, unknown>);
 }
 
 export async function updateExperience(
-  token: string | null,
   id: string,
   input: Partial<ExperienceInput>,
 ): Promise<Experience> {
-  const res = await apiFetch<Experience>(`/api/v1/experiences/${id}`, token, { method: "PATCH", body: toSnakeCase(input as Record<string, unknown>) });
+  const res = await apiFetch<Experience>(`/api/v1/experiences/${id}`, { method: "PATCH", body: toSnakeCase(input as Record<string, unknown>) });
   return toCamelCase(res as unknown as Record<string, unknown>);
 }
 
 export async function deleteExperience(
-  token: string | null,
   id: string,
 ): Promise<void> {
-  await apiFetch(`/api/v1/experiences/${id}`, token, { method: "DELETE" });
+  await apiFetch(`/api/v1/experiences/${id}`, { method: "DELETE" });
 }

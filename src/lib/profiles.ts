@@ -93,24 +93,22 @@ function toSnakeCasePayload(input: Record<string, unknown>): Record<string, unkn
   };
 }
 
-export async function listProfiles(token: string | null): Promise<Profile[]> {
+export async function listProfiles(): Promise<Profile[]> {
   const data = await apiFetch<Profile[] | { profiles: Profile[] }>(
     "/api/v1/profiles",
-    token,
   );
   const items = Array.isArray(data) ? data : (data.profiles ?? []);
   return items.map(normalizeProfile);
 }
 
-export async function getProfileLimits(token: string | null): Promise<ProfileLimits> {
-  return apiFetch<ProfileLimits>("/api/v1/profiles/limits", token);
+export async function getProfileLimits(): Promise<ProfileLimits> {
+  return apiFetch<ProfileLimits>("/api/v1/profiles/limits");
 }
 
 export async function createProfile(
-  token: string | null,
   input: ProfileInput,
 ): Promise<Profile> {
-  const data = await apiFetch<Record<string, unknown>>("/api/v1/profiles", token, {
+  const data = await apiFetch<Record<string, unknown>>("/api/v1/profiles", {
     method: "POST",
     body: toSnakeCasePayload(input),
   });
@@ -118,34 +116,29 @@ export async function createProfile(
 }
 
 export async function updateProfile(
-  token: string | null,
   id: string,
   input: Partial<ProfileInput>,
 ): Promise<Profile> {
   const data = await apiFetch<Record<string, unknown>>(
     `/api/v1/profiles/${encodeURIComponent(id)}`,
-    token,
     { method: "PATCH", body: toSnakeCasePayload(input) },
   );
   return normalizeProfile(data);
 }
 
 export async function deleteProfile(
-  token: string | null,
   id: string,
 ): Promise<void> {
-  await apiFetch(`/api/v1/profiles/${encodeURIComponent(id)}`, token, {
+  await apiFetch(`/api/v1/profiles/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
 }
 
 export async function setDefaultProfile(
-  token: string | null,
   id: string,
 ): Promise<Profile> {
   const data = await apiFetch<Record<string, unknown>>(
     `/api/v1/profiles/${encodeURIComponent(id)}/set-default`,
-    token,
     { method: "POST" },
   );
   return normalizeProfile(data);
@@ -153,20 +146,18 @@ export async function setDefaultProfile(
 
 // --- Subscription / Tier ---
 
-export async function getSubscriptionTier(token: string | null): Promise<SubscriptionTier> {
-  return apiFetch<SubscriptionTier>("/api/v1/subscription/tier", token);
+export async function getSubscriptionTier(): Promise<SubscriptionTier> {
+  return apiFetch<SubscriptionTier>("/api/v1/subscription/tier");
 }
 
-export async function getSubscriptionLimits(token: string | null): Promise<Record<string, number>> {
-  return apiFetch<Record<string, number>>("/api/v1/subscription/limits", token);
+export async function getSubscriptionLimits(): Promise<Record<string, number>> {
+  return apiFetch<Record<string, number>>("/api/v1/subscription/limits");
 }
 
 export async function checkFeatureAccess(
-  token: string | null,
   feature: string,
 ): Promise<{ allowed: boolean; tier: string }> {
   return apiFetch<{ allowed: boolean; tier: string }>(
     `/api/v1/subscription/features/${encodeURIComponent(feature)}`,
-    token,
   );
 }

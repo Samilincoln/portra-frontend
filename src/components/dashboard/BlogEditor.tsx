@@ -45,7 +45,7 @@ const schema = z.object({
 });
 
 export function BlogEditor({ existing }: Props) {
-  const { token } = useAuth();
+  useAuth();
   const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -65,7 +65,7 @@ export function BlogEditor({ existing }: Props) {
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["projects", activeProfile?.id],
-    queryFn: () => listProjects(token, activeProfile?.id),
+    queryFn: () => listProjects(activeProfile?.id),
   });
 
   const autoSlug = useMemo(() => slugify(title), [title]);
@@ -79,8 +79,8 @@ export function BlogEditor({ existing }: Props) {
   const mutation = useMutation({
     mutationFn: (input: BlogInput) =>
       existing
-        ? updateBlog(token, existing.id, input)
-        : createBlog(token, input, activeProfile?.id),
+        ? updateBlog(existing.id, input)
+        : createBlog(input, activeProfile?.id),
     onSuccess: (data) => {
       toast.success(existing ? "Post updated" : "Post created");
       qc.invalidateQueries({ queryKey: ["blogs"] });

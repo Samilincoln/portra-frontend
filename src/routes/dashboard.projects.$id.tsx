@@ -134,14 +134,14 @@ function toForm(p: Project): FormState {
 
 function ProjectDetailPage() {
   const { id } = Route.useParams();
-  const { token } = useAuth();
+  useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const router = useRouter();
 
   const query = useQuery({
     queryKey: ["projects", id],
-    queryFn: () => getProject(token, id),
+    queryFn: () => getProject(id),
     enabled: Boolean(id),
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -167,7 +167,7 @@ function ProjectDetailPage() {
 
   const saveMutation = useMutation({
     mutationFn: (input: Partial<CreateProjectInput> & { published?: boolean }) =>
-      updateProject(token, id, input),
+      updateProject(id, input),
     onSuccess: (data) => {
       toast.success("Project saved");
       qc.setQueryData(["projects", id], data);
@@ -181,7 +181,7 @@ function ProjectDetailPage() {
 
   const publishMutation = useMutation({
     mutationFn: (published: boolean) =>
-      updateProject(token, id, { published }),
+      updateProject(id, { published }),
     onSuccess: (data, published) => {
       toast.success(published ? "Project published" : "Moved to draft");
       qc.setQueryData(["projects", id], data);
@@ -193,7 +193,7 @@ function ProjectDetailPage() {
   });
 
   const summaryMutation = useMutation({
-    mutationFn: () => generateProjectSummary(token, id),
+    mutationFn: () => generateProjectSummary(id),
     onSuccess: (data) => {
       setForm((f) =>
         f
@@ -214,7 +214,7 @@ function ProjectDetailPage() {
   });
 
   const githubSummaryMutation = useMutation({
-    mutationFn: (githubUrl: string) => generateFromGithub(token, githubUrl, id),
+    mutationFn: (githubUrl: string) => generateFromGithub(githubUrl, id),
     onSuccess: (data, githubUrl) => {
       setForm((f) => {
         if (!f) return f;
@@ -244,7 +244,7 @@ function ProjectDetailPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteProject(token, id),
+    mutationFn: () => deleteProject(id),
     onSuccess: () => {
       toast.success("Project deleted");
       qc.invalidateQueries({ queryKey: ["projects"] });

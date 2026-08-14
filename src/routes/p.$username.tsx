@@ -29,14 +29,12 @@ export const Route = createFileRoute("/p/$username")({
 
 type ProfileSummary = { slug: string; isDefault: boolean };
 
-async function fetchProfilesForRedirect(
-  token: string | null,
-): Promise<ProfileSummary[]> {
+async function fetchProfilesForRedirect(): Promise<ProfileSummary[]> {
   const base = typeof window === "undefined" && API_BASE_URL ? API_BASE_URL : "";
   const res = await fetch(`${base}/api/v1/profiles`, {
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
   if (!res.ok) return [];
@@ -68,11 +66,11 @@ function ProfileLayout() {
 
 function ProfileRedirect({ username }: { username: string }) {
   const navigate = useNavigate();
-  const { token, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const profilesQ = useQuery({
     queryKey: ["profiles", "redirect", username],
-    queryFn: () => fetchProfilesForRedirect(token),
+    queryFn: () => fetchProfilesForRedirect(),
     retry: false,
   });
 

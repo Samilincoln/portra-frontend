@@ -89,7 +89,7 @@ const emptyState = {
 };
 
 export function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const { token } = useAuth();
+  useAuth();
   const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const [form, setForm] = useState(emptyState);
@@ -163,7 +163,7 @@ export function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
   }
 
   const mutation = useMutation({
-    mutationFn: (input: CreateProjectInput) => createProject(token, input, activeProfile?.id),
+    mutationFn: (input: CreateProjectInput) => createProject(input, activeProfile?.id),
     onSuccess: () => {
       toast.success("Project created");
       qc.invalidateQueries({ queryKey: ["projects"] });
@@ -176,7 +176,7 @@ export function AddProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
   });
 
   const githubSummaryMutation = useMutation({
-    mutationFn: (githubUrl: string) => generateFromGithub(token, githubUrl),
+    mutationFn: (githubUrl: string) => generateFromGithub(githubUrl),
     onSuccess: (data, githubUrl) => {
       setForm((f) => {
         const aiTechs = Array.isArray(data.technologies) ? data.technologies : [];

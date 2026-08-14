@@ -30,33 +30,33 @@ export const Route = createFileRoute("/dashboard/")({
 });
 
 function DashboardHome() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { activeProfile } = useActiveProfile();
   const qc = useQueryClient();
   const greeting = user?.name?.split(" ")[0] ?? "there";
 
   const statsQuery = useQuery({
     queryKey: ["dashboard-stats"],
-    queryFn: () => getDashboardStats(token),
+    queryFn: () => getDashboardStats(),
   });
 
   const userQuery = useQuery({
     queryKey: ["user-profile"],
-    queryFn: () => getMe(token),
+    queryFn: () => getMe(),
   });
 
   const notificationsQuery = useQuery({
     queryKey: ["notifications"],
-    queryFn: () => listNotifications(token),
+    queryFn: () => listNotifications(),
   });
 
   const markReadMutation = useMutation({
-    mutationFn: (id: string) => markNotificationRead(token!, id),
+    mutationFn: (id: string) => markNotificationRead(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
   const markAllReadMutation = useMutation({
-    mutationFn: () => markAllNotificationsRead(token!),
+    mutationFn: () => markAllNotificationsRead(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 

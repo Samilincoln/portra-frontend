@@ -48,12 +48,10 @@ export type AiUsageResponse = {
 };
 
 export async function getAiUsage(
-  token: string | null,
   days: number = 30,
 ): Promise<AiUsageResponse> {
   return apiFetch<AiUsageResponse>(
     `/api/v1/admin/ai-usage?days=${days}`,
-    token,
   );
 }
 
@@ -80,12 +78,10 @@ export type PlatformStats = {
 };
 
 export async function getPlatformStats(
-  token: string | null,
   days: number = 30,
 ): Promise<PlatformStats> {
   return apiFetch<PlatformStats>(
     `/api/v1/admin/stats?days=${days}`,
-    token,
   );
 }
 
@@ -111,12 +107,10 @@ export type AdminUserListResponse = {
 };
 
 export async function getAdminUsers(
-  token: string | null,
   days: number = 30,
 ): Promise<AdminUserListResponse> {
   return apiFetch<AdminUserListResponse>(
     `/api/v1/admin/users?days=${days}`,
-    token,
   );
 }
 
@@ -148,12 +142,10 @@ export type ContentStats = {
 };
 
 export async function getContentStats(
-  token: string | null,
   days: number = 30,
 ): Promise<ContentStats> {
   return apiFetch<ContentStats>(
     `/api/v1/admin/content-stats?days=${days}`,
-    token,
   );
 }
 
@@ -178,12 +170,10 @@ export type AdminProfileListResponse = {
 };
 
 export async function getAdminProfiles(
-  token: string | null,
   days: number = 30,
 ): Promise<AdminProfileListResponse> {
   return apiFetch<AdminProfileListResponse>(
     `/api/v1/admin/profiles?days=${days}`,
-    token,
   );
 }
 
@@ -219,12 +209,10 @@ export type FeatureUsageResponse = {
 };
 
 export async function getFeatureUsage(
-  token: string | null,
   days: number = 30,
 ): Promise<FeatureUsageResponse> {
   return apiFetch<FeatureUsageResponse>(
     `/api/v1/admin/feature-usage?days=${days}`,
-    token,
   );
 }
 
@@ -249,12 +237,10 @@ export type OAuthStatsResponse = {
 };
 
 export async function getOAuthStats(
-  token: string | null,
   days: number = 30,
 ): Promise<OAuthStatsResponse> {
   return apiFetch<OAuthStatsResponse>(
     `/api/v1/admin/oauth-stats?days=${days}`,
-    token,
   );
 }
 
@@ -278,12 +264,10 @@ export type SocialSharesResponse = {
 };
 
 export async function getSocialShares(
-  token: string | null,
   days: number = 30,
 ): Promise<SocialSharesResponse> {
   return apiFetch<SocialSharesResponse>(
     `/api/v1/admin/social-shares?days=${days}`,
-    token,
   );
 }
 
@@ -317,12 +301,10 @@ export type SubscriptionStatsResponse = {
 };
 
 export async function getSubscriptionStats(
-  token: string | null,
   days: number = 30,
 ): Promise<SubscriptionStatsResponse> {
   return apiFetch<SubscriptionStatsResponse>(
     `/api/v1/admin/subscriptions?days=${days}`,
-    token,
   );
 }
 
@@ -363,11 +345,9 @@ export type RevenueStatsResponse = {
 };
 
 export async function getRevenueStats(
-  token: string | null,
   days: number = 30,
 ): Promise<RevenueStatsResponse> {
   return apiFetch<RevenueStatsResponse>(
     `/api/v1/admin/revenue?days=${days}`,
-    token,
   );
 }

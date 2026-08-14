@@ -61,11 +61,16 @@ function SignupPage() {
 
   async function connectProvider(provider: OAuthProvider) {
     try {
-      const { url, code_verifier } = await getOAuthUrl(null, provider);
+      const { url, state, code_verifier } = await getOAuthUrl(provider);
+
+      // Store state for CSRF verification (Google, GitHub, LinkedIn)
+      if (state) {
+        sessionStorage.setItem(`portra:${provider}_state`, state);
+      }
 
       // Store code_verifier for Twitter PKCE flow
       if (code_verifier) {
-        localStorage.setItem("portra:twitter_code_verifier", code_verifier);
+        sessionStorage.setItem("portra:twitter_code_verifier", code_verifier);
       }
 
       // Open popup
@@ -100,31 +105,22 @@ function SignupPage() {
     try {
       const { confirm: _c, ...payload } = parsed.data;
       void _c;
-      const data = await authFetch<{ token?: string; access_token?: string; accessToken?: string; user?: AuthUser }>(
+      // Backend sets HttpOnly cookies on success
+      await authFetch<{ access_token?: string }>(
         "/api/v1/auth/signup",
         payload,
       );
-      console.log("Signup response:", data);
-      const token = data.token ?? data.access_token ?? data.accessToken;
-      if (!token) {
-        throw { message: "Invalid response: token not found in response" } satisfies AuthApiError;
-      }
-      const initialUser = data.user ?? { name: payload.name, email: payload.email };
-      setSession({
-        token,
-        user: initialUser,
-      });
-      // Fetch full profile to ensure name is populated
-      if (!initialUser?.name) {
-        try {
-          const profile = await getMe(token);
-          if (profile?.name) {
-            setSession({ token, user: { ...initialUser, name: profile.name, username: profile.username } });
-          }
-        } catch {
-          // Profile fetch failed, continue with initial user
-        }
-      }
+      // Fetch user from cookie-authenticated endpoint
+      const profile = await getMe();
+      const initialUser: AuthUser = {
+        id: profile.id,
+        name: profile.name,
+        email: profile.email,
+        username: profile.username,
+        subscriptionTier: profile.subscriptionTier,
+        isAdmin: profile.isAdmin,
+      };
+      setSession({ user: initialUser });
       await router.invalidate();
       navigate({ to: "/dashboard" });
     } catch (err) {

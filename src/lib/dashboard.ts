@@ -11,6 +11,6 @@ export type DashboardStats = {
   profile_views_change_pct: number;
 };
 
-export async function getDashboardStats(token: string | null): Promise<DashboardStats> {
-  return apiFetch<DashboardStats>("/api/v1/dashboard/stats", token);
+export async function getDashboardStats(): Promise<DashboardStats> {
+  return apiFetch<DashboardStats>("/api/v1/dashboard/stats");
 }
