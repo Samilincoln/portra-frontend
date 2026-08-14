@@ -10,7 +10,7 @@ export const Route = createFileRoute("/auth/callback/$provider")({
   component: OAuthCallbackPage,
 });
 
-const PROVIDERS: OAuthProvider[] = ["github", "linkedin", "twitter"];
+const PROVIDERS: OAuthProvider[] = ["github", "linkedin", "twitter", "google"];
 
 function OAuthCallbackPage() {
   const { provider } = Route.useParams();

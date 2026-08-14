@@ -224,7 +224,7 @@ function LoginPage() {
           variant="outline"
           className="w-full"
           disabled={loading}
-          onClick={() => connectProvider("twitter")}
+          onClick={() => connectProvider("google")}
         >
           <GoogleIcon className="h-4 w-4" />
           Sign in with Google

@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/auth";
 
-export type OAuthProvider = "github" | "linkedin" | "twitter";
+export type OAuthProvider = "github" | "linkedin" | "twitter" | "google";
 
 export type OAuthUrlResponse = {
   url: string;
