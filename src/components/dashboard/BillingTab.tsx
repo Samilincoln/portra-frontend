@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
-import { Check, CreditCard, ExternalLink, Loader2, Receipt, Zap } from "lucide-react";
+import { Check, CreditCard, ExternalLink, Loader2, Receipt, Settings, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,11 +29,11 @@ import {
   getSubscriptionTier,
   getInvoices,
   createCheckoutSession,
-  createPortalSession,
   verifyPayment,
   type SubscriptionTierResponse,
   type Invoice,
 } from "@/lib/billing";
+import { BillingPanel } from "@/components/billing/BillingPanel";
 
 const PAYSTACK_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string;
 
@@ -86,6 +86,34 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<TierId | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<"paystack" | "flutterwave">("paystack");
+  const [billingOpen, setBillingOpen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const reference = params.get("reference");
+    const provider = params.get("provider");
+    const plan = params.get("plan");
+
+    if (payment === "success" && reference && provider) {
+      setBillingOpen(true);
+      verifyPayment(reference, provider)
+        .then(() => {
+          const planLabel = plan === "pro" ? "Pro" : plan === "consultant" ? "Consultant" : "";
+          toast.success(planLabel ? `Payment verified! Welcome to ${planLabel}.` : "Payment verified! Your plan has been activated.");
+          qc.invalidateQueries({ queryKey: ["billing", "subscription-tier"] });
+          qc.invalidateQueries({ queryKey: ["billing", "invoices"] });
+          qc.invalidateQueries({ queryKey: ["billing", "subscription-history"] });
+          qc.invalidateQueries({ queryKey: ["me"] });
+        })
+        .catch(() => {
+          toast.error("Could not verify payment. Please contact support.");
+        })
+        .finally(() => {
+          window.history.replaceState({}, "", window.location.pathname + "?tab=billing");
+        });
+    }
+  }, [qc]);
 
   function openPaystackPopup(data: { access_code?: string; reference: string; provider: string; amount?: number }, plan: TierId) {
     const Pop = window.PaystackPop;
@@ -139,16 +167,6 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
     },
   });
 
-  const portalMutation = useMutation({
-    mutationFn: () => createPortalSession(),
-    onSuccess: (data) => {
-      if (data.portal_url) window.open(data.portal_url, "_blank");
-    },
-    onError: (err: { message?: string }) => {
-      toast.error(err?.message ?? "Could not open billing portal");
-    },
-  });
-
   function handleUpgrade(plan: TierId) {
     setSelectedPlan(plan);
     setUpgradeOpen(true);
@@ -190,14 +208,9 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
               variant="outline"
               size="sm"
               className="gap-1.5"
-              disabled={portalMutation.isPending}
-              onClick={() => portalMutation.mutate()}
+              onClick={() => setBillingOpen(true)}
             >
-              {portalMutation.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <ExternalLink className="h-3.5 w-3.5" />
-              )}
+              <Settings className="h-3.5 w-3.5" />
               Manage billing
             </Button>
           )}
@@ -421,6 +434,9 @@ export function BillingTab({ profile }: { profile?: { subscriptionTier?: string 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Billing Management Panel */}
+      <BillingPanel open={billingOpen} onOpenChange={setBillingOpen} />
     </div>
   );
 }

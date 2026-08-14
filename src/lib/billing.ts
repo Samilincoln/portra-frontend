@@ -53,6 +53,33 @@ export type VerifyResponse = {
   };
 };
 
+export type PaymentMethod = {
+  id: string;
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+  is_default: boolean;
+};
+
+export type PaymentMethodsResponse = {
+  methods: PaymentMethod[];
+};
+
+export type SubscriptionHistoryEvent = {
+  id: string;
+  date: string;
+  type: "upgrade" | "downgrade" | "renewal" | "cancellation" | "payment";
+  plan: string;
+  amount: number;
+  currency: string;
+  status: string;
+};
+
+export type SubscriptionHistoryResponse = {
+  events: SubscriptionHistoryEvent[];
+};
+
 export async function getSubscriptionTier(): Promise<SubscriptionTierResponse> {
   return apiFetch<SubscriptionTierResponse>("/api/v1/subscription/tier");
 }
@@ -89,4 +116,53 @@ export async function verifyPayment(
     method: "POST",
     body: { reference, provider },
   });
+}
+
+export async function getPaymentMethods(): Promise<PaymentMethodsResponse> {
+  return apiFetch<PaymentMethodsResponse>("/api/v1/billing/payment-methods");
+}
+
+export async function addPaymentMethod(
+  token: string,
+): Promise<{ method: PaymentMethod }> {
+  return apiFetch<{ method: PaymentMethod }>("/api/v1/billing/payment-methods", {
+    method: "POST",
+    body: { token },
+  });
+}
+
+export async function removePaymentMethod(id: string): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/api/v1/billing/payment-methods/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function setDefaultPaymentMethod(
+  id: string,
+): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/api/v1/billing/payment-methods/${id}/default`, {
+    method: "POST",
+  });
+}
+
+export async function cancelSubscription(
+  reason?: string,
+): Promise<{ success: boolean; message: string; subscription: VerifyResponse["subscription"] }> {
+  return apiFetch<{ success: boolean; message: string; subscription: VerifyResponse["subscription"] }>(
+    "/api/v1/subscription/cancel",
+    { method: "POST", body: { reason } },
+  );
+}
+
+export async function downgradeSubscription(
+  plan: string,
+): Promise<{ success: boolean; message: string; subscription: VerifyResponse["subscription"] }> {
+  return apiFetch<{ success: boolean; message: string; subscription: VerifyResponse["subscription"] }>(
+    "/api/v1/subscription/downgrade",
+    { method: "POST", body: { plan } },
+  );
+}
+
+export async function getSubscriptionHistory(): Promise<SubscriptionHistoryResponse> {
+  return apiFetch<SubscriptionHistoryResponse>("/api/v1/subscription/history");
 }
